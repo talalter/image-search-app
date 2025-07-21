@@ -1,0 +1,12 @@
+
+__pycache__/
+*.pyc
+*.faiss
+*.pkl
+*.npy
+*.sqlite
+
+.env
+.env/
+talenv/
+static/uploads/

@@ -1,0 +1,72 @@
+/* App.css */
+.upload-panel {
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.mode-buttons {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 10px;
+}
+
+.mode-buttons button {
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  background-color: #f3f3f3;
+}
+
+.centered-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+.login-box {
+  background-color: white;
+  padding: 40px;
+  border-radius: 16px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  min-width: 300px;
+}
+
+.app-container {
+  padding: 40px;
+  text-align: center;
+}
+
+.welcome-text {
+  font-size: 28px;
+  margin-bottom: 30px;
+}
+
+.main-content {
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+  margin-top: 20px;
+}
+
+.side-box {
+  flex: 1;
+  padding: 20px;
+  border-radius: 12px;
+  background-color: white;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.upload {
+  border: 2px solid #4CAF50;
+}
+
+.search {
+  border: 2px solid #2196F3;
+}
