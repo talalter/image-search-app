@@ -17,7 +17,6 @@ function Login({ onLogin }) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
       });
-      console.log('Raw response:', res);  // ← שים כאן
 
       const data = await res.json();
       console.log('Data received from server:', data); 

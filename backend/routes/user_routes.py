@@ -29,7 +29,7 @@ def login(user: UserIn):
     init_db()
     db_user = get_user_by_username(user.username)
     if not db_user:
-        raise HTTPException(status_code=404, detail="User not found")
+        raise HTTPException(status_code=401, detail="Invalid username or password")
     db_password = db_user[2] 
     if user.password != db_password:
         raise HTTPException(status_code=401, detail="Incorrect password")

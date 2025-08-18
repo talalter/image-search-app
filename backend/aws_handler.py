@@ -1,7 +1,6 @@
 import boto3  # type: ignore
 from dotenv import load_dotenv # type: ignore
 import os
-from pathlib import Path
 
 
 load_dotenv()
