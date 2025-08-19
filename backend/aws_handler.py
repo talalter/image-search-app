@@ -6,10 +6,16 @@ BUCKET_NAME = "images-search-app"
 load_dotenv()
 
 storage_backend = os.getenv("STORAGE_BACKEND").lower()
-
+print(storage_backend)
 
 def upload_folder_to_bucket(file, key, upload_type='folder'):
     """Uploads a folder or file to an S3 bucket."""
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.getenv("AWS_REGION")
+        )
     if upload_type == 'folder':
         file.file.seek(0)
         s3.upload_fileobj(
@@ -34,6 +40,12 @@ def upload_folder_to_local(file, key, upload_type='folder'):
             f.write(file.file.read())
 
 def generate_presigned_url(s3_key: str, bucket_name=BUCKET_NAME, expiration=60) -> str:
+    s3 = boto3.client(
+        's3',
+        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+        region_name=os.getenv("AWS_REGION")
+        )
     """Generate a presigned URL for an object in S3."""
     return s3.generate_presigned_url(
         ClientMethod='get_object',
@@ -56,12 +68,5 @@ def upload_image(file, key, upload_type='folder'):
 
 
     elif storage_backend == 'aws':
-
-        s3 = boto3.client(
-            's3',
-            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-            region_name=os.getenv("AWS_REGION")
-        )
-        
-        upload_folder_to_bucket(file, key, upload_type, BUCKET_NAME) 
+        print("Uploading to AWS S3") 
+        upload_folder_to_bucket(file, key, upload_type) 
