@@ -25,24 +25,24 @@ def register(user: UserIn):
         raise HTTPException(status_code=400, detail=str(e))
 
 @router.post("/login")
-def login(user: UserIn):
+def login(payload: UserIn):
     init_db()
-    db_user = get_user_by_username(user.username)
+    db_user = get_user_by_username(payload.username)
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     db_password = db_user[2] 
-    if user.password != db_password:
+    if payload.password != db_password:
         raise HTTPException(status_code=401, detail="Incorrect password")
     user_id = db_user[0]
-    token = str(uuid.uuid4())  # Generate a random token
-    user = UserOut(id=user_id, username=user.username)
+    token = str(uuid.uuid4()) 
+    user_out = UserOut(id=user_id, username=payload.username)
     sessions[token] = user_id
 
     return {
         "message": "Login successful",
         "token": token,
         "user_id": user_id,
-        "username": user.username
+        "username": payload.username
     }
 
 

@@ -2,32 +2,36 @@ import boto3  # type: ignore
 from dotenv import load_dotenv # type: ignore
 import os
 
-
-load_dotenv()
-s3 = boto3.client(
-    's3',
-    aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-    aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-    region_name=os.getenv("AWS_REGION")
-)
-
 BUCKET_NAME = "images-search-app"
+load_dotenv()
+
+storage_backend = os.getenv("STORAGE_BACKEND").lower()
 
 
-
-def upload_folder_to_bucket(file, key, upload_type='folder', bucket_name=BUCKET_NAME):
+def upload_folder_to_bucket(file, key, upload_type='folder'):
     """Uploads a folder or file to an S3 bucket."""
     if upload_type == 'folder':
         file.file.seek(0)
         s3.upload_fileobj(
             file.file,
-            bucket_name,
+            BUCKET_NAME,
             key,
             ExtraArgs={"ContentType": file.content_type}
         )
     elif upload_type == 'faiss':
-        s3.upload_file(file, bucket_name, key)
+        s3.upload_file(file, BUCKET_NAME, key)
 
+
+def upload_folder_to_local(file, key, upload_type='folder'):
+    base_folder = os.getcwd()
+    folder_path = os.path.join(base_folder, key)
+
+    os.makedirs(os.path.dirname(folder_path), exist_ok=True)
+
+    if upload_type == 'folder':
+        file.file.seek(0)
+        with open(folder_path, 'wb') as f:
+            f.write(file.file.read())
 
 def generate_presigned_url(s3_key: str, bucket_name=BUCKET_NAME, expiration=60) -> str:
     """Generate a presigned URL for an object in S3."""
@@ -36,3 +40,28 @@ def generate_presigned_url(s3_key: str, bucket_name=BUCKET_NAME, expiration=60) 
         Params={'Bucket': bucket_name, 'Key': s3_key},
         ExpiresIn=expiration
     )
+
+
+def get_path_to_save(key:str):
+    if storage_backend == 'local':
+        return key
+    elif storage_backend == 'aws':
+        return generate_presigned_url(s3_key=key)
+
+
+def upload_image(file, key, upload_type='folder'):
+
+    if storage_backend == 'local': 
+        upload_folder_to_local(file, key, upload_type)
+
+
+    elif storage_backend == 'aws':
+
+        s3 = boto3.client(
+            's3',
+            aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
+            aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
+            region_name=os.getenv("AWS_REGION")
+        )
+        
+        upload_folder_to_bucket(file, key, upload_type, BUCKET_NAME) 

@@ -2,7 +2,7 @@ import faiss
 import numpy as np
 import os
 from utils import embed_text
-
+import heapq
 FAISS_FOLDER: str = "faisses_indexes"
 class FaissManager:
     def __init__(self, base_folder: str = FAISS_FOLDER):

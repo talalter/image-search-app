@@ -8,7 +8,7 @@ from typing import List
 import io
 from routes.session_store import sessions, get_user_id_from_token
 from PIL import Image
-from aws_handler import upload_folder_to_bucket, generate_presigned_url
+from aws_handler import upload_image, get_path_to_save
 # demoapi.py
 
 router = APIRouter()
@@ -51,9 +51,9 @@ async def upload_multiple_images(
         image = Image.open(file.file).convert("RGB")        
         embedding = embed_image(image)
 
-        s3_key = f"users/{user_id}/images/{file.filename}"
+        s3_key = f"images/{user_id}/{folder_id}/{file.filename}"
         image_id = add_image_to_images(user_id, s3_key, folder_id)
-        upload_folder_to_bucket(file, s3_key, upload_type='folder')
+        upload_image(file, s3_key, upload_type='folder')
 
         faiss_manager.add_vector_to_faiss( user_id, folder_id, embedding, image_id)
 
@@ -77,7 +77,8 @@ def search_images(token: str, query: str, top_k: int, folders_ids:str):
     for i in range(len(indices[0])):
         image_id = indices[0][i]
         s3_key = get_image_path_by_image_id(image_id)
-        image_url = generate_presigned_url(s3_key)
+        image_url = get_path_to_save(s3_key)
+        print(f'image_url: {image_url}')
         similarity = distances[0][i]
         results.append({"image": image_url, "similarity": float(similarity)})
     return {"results": results}  
