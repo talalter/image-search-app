@@ -84,13 +84,3 @@ class FaissManager:
             return True
         else:
             raise FileNotFoundError(f"FAISS index for user {user_id} does not exist.")
-
-
-    @staticmethod
-    def extract_vectors_and_ids(index: faiss.IndexIDMap):
-        if index.ntotal == 0:
-            return np.empty((0, index.d), dtype='float32'), np.empty((0,), dtype='int64')
-        vectors = index.index.reconstruct_n(0, index.ntotal)
-        ids = faiss.vector_to_array(index.id_map)
-        return vectors, ids
-
