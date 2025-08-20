@@ -72,8 +72,6 @@ class FaissManager:
         results.sort(key=lambda x: x[0], reverse=True)
         distances = [[res[0] for res in results][:k]]
         indices = [[res[1] for res in results][:k]]
-        print(f'distances: {distances}')
-        print(f'indices: {indices}')
         return distances, indices
 
 
