@@ -19,7 +19,7 @@ function Login({ onLogin }) {
       });
 
       const data = await res.json();
-      console.log('Data received from server:', data); 
+      
       if (!res.ok) { 
         throw new Error(data.detail || 'Login failed');
       }
@@ -29,6 +29,7 @@ function Login({ onLogin }) {
     } catch (err) {
       setError(err.message);
     }
+    
   };
 
   return (
