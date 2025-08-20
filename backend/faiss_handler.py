@@ -53,7 +53,8 @@ class FaissManager:
     def search(self, user_id: int, query: str, folder_ids: list[int], k: int = 1):
         query_embedding = embed_text(query).astype('float32').reshape(1, -1)
         query_embedding = self._normalize(query_embedding)
-        merged_index = faiss.IndexIDMap(faiss.IndexFlatL2(query_embedding.shape[1]))
+        
+        results = []
 
         print(f"Searching FAISS for user {user_id}, query='{query}', folders={folder_ids}")
 
@@ -63,15 +64,16 @@ class FaissManager:
                 raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
             
             index = faiss.read_index(index_path)
-            vectors, ids = self.extract_vectors_and_ids(index)
-            merged_index.add_with_ids(vectors, ids)
+            local_k = min(k, index.ntotal)
+            distances, indices = index.search(query_embedding, local_k)
+            for d, i in zip(distances[0], indices[0]):
+                results.append((float(d), int(i)))
 
-        if merged_index.ntotal == 0:
-            raise ValueError("No vectors found in the provided folder IDs.")
 
-        distances, indices = merged_index.search(query_embedding, k)
-        print(f'distances: {distances}')
-        print(f'indices: {indices}')
+        results.sort(key=lambda x: x[0], reverse=True)
+        distances = [[res[0] for res in results][:k]]
+        indices = [[res[1] for res in results][:k]]
+
         return distances, indices
 
 

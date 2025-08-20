@@ -68,5 +68,4 @@ def upload_image(file, key, upload_type='folder'):
 
 
     elif storage_backend == 'aws':
-        print("Uploading to AWS S3") 
         upload_folder_to_bucket(file, key, upload_type) 

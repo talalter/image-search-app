@@ -78,7 +78,6 @@ def search_images(token: str, query: str, top_k: int, folders_ids:str):
         image_id = indices[0][i]
         s3_key = get_image_path_by_image_id(image_id)
         image_url = get_path_to_save(s3_key)
-        print(f'image_url: {image_url}')
         similarity = distances[0][i]
         results.append({"image": image_url, "similarity": float(similarity)})
     return {"results": results}  
