@@ -70,6 +70,8 @@ class FaissManager:
             raise ValueError("No vectors found in the provided folder IDs.")
 
         distances, indices = merged_index.search(query_embedding, k)
+        print(f'distances: {distances}')
+        print(f'indices: {indices}')
         return distances, indices
 
 
