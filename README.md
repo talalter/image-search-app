@@ -14,4 +14,6 @@ Status: Work‑in‑progress.
 - Embeddings are generated with OpenAI's CLIP model (ViT-B/32) and stored in FAISS indexes for efficient similarity search.
 - When STORAGE_BACKEND=local, the backend serves static images directly; setting it to aws uploads files to S3 and retrieves them through presigned URLs.
 
+
+## Project Diagram
 ![Project Diagram](image-search-app.svg)
