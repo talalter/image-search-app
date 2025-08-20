@@ -69,12 +69,11 @@ class FaissManager:
             for d, i in zip(distances[0], indices[0]):
                 results.append((float(d), int(i)))
 
-        print(results)
-        print(len(results))
         results.sort(key=lambda x: x[0], reverse=True)
-        print(results[:local_k])
-        distances = np.concatenate([res[0] for res in results])[:local_k]
-        indices = np.concatenate([res[1] for res in results])[:local_k]
+        distances = [[res[0] for res in results][:k]]
+        indices = [[res[1] for res in results][:k]]
+        print(f'distances: {distances}')
+        print(f'indices: {indices}')
         return distances, indices
 
 
