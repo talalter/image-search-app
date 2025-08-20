@@ -8,3 +8,8 @@ Status: Work‑in‑progress.
 - Search with text prompts and return top matches based on cosine similarity
 - Configurable storage backend: local filesystem or AWS S3, selected via the 'STORAGE_BACKEND' environment variable​ 
 - React frontend with components for folder upload and querying results.
+
+## Notes
+- SQLite database stores user credentials, folder metadata, and image file paths.
+- Embeddings are generated with OpenAI's CLIP model (ViT-B/32) and stored in FAISS indexes for efficient similarity search.
+- When STORAGE_BACKEND=local, the backend serves static images directly; setting it to aws uploads files to S3 and retrieves them through presigned URLs.
