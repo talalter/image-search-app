@@ -8,7 +8,6 @@ __pycache__/
 *.jpeg
 *.jpg
 *.png
-*.svg
 .env
 .env/
 talenv/
