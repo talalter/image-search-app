@@ -5,7 +5,7 @@ import os
 BUCKET_NAME = "images-search-app"
 load_dotenv()
 
-storage_backend = os.getenv("STORAGE_BACKEND").lower()
+storage_backend = os.getenv("STORAGE_BACKEND", "local").lower()
 print(storage_backend)
 
 def upload_folder_to_bucket(file, key, upload_type='folder'):

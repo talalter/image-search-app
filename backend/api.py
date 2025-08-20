@@ -6,7 +6,7 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 import os
 
-storage_backend = os.getenv("STORAGE_BACKEND").lower()
+storage_backend = os.getenv("STORAGE_BACKEND", "local").lower()
 
 
 app = FastAPI()
