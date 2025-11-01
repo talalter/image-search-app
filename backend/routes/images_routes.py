@@ -6,7 +6,7 @@ from database import add_folder, add_image_to_images, get_image_path_by_image_id
 from utils import embed_image
 from typing import List
 import io
-from routes.session_store import sessions, get_user_id_from_token
+from routes.session_store import get_user_id_from_token
 from PIL import Image
 from aws_handler import upload_image, get_path_to_save
 # demoapi.py

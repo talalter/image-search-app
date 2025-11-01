@@ -3,8 +3,13 @@ from pydantic_models import UserIn, UserOut
 from database import init_db, add_user, get_user_by_username, delete_user_from_db
 from faiss_handler import FaissManager
 import uuid
-from routes.session_store import sessions, get_user_id_from_token
-
+from security import verify_password
+from routes.session_store import (
+    get_user_id_from_token,
+    invalidate_session,
+    invalidate_user_sessions,
+    issue_session_token,
+)
 router = APIRouter()
 faiss_manager = FaissManager()
 
@@ -31,13 +36,10 @@ def login(payload: UserIn):
     if not db_user:
         raise HTTPException(status_code=401, detail="Invalid username or password")
     db_password = db_user[2] 
-    if payload.password != db_password:
+    if not verify_password(payload.password, db_password):
         raise HTTPException(status_code=401, detail="Incorrect password")
     user_id = db_user[0]
-    token = str(uuid.uuid4()) 
-    user_out = UserOut(id=user_id, username=payload.username)
-    sessions[token] = user_id
-
+    token = issue_session_token(user_id)
     return {
         "message": "Login successful",
         "token": token,
@@ -48,19 +50,21 @@ def login(payload: UserIn):
 
 @router.post("/logout")
 def logout(token: str = Body(...)):
-    if token in sessions:
-        del sessions[token]
-        return {"message": "Logout successful"}
-    else:
+    try:
+        get_user_id_from_token(token)
+    except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
     
+    invalidate_session(token)
+    return {"message": "Logout successful"}
+
 
 @router.delete("/delete-account")
 def delete_account(token: str = Body(...)):
     user_id = get_user_id_from_token(token)
     delete_user_from_db(user_id)
     faiss_manager.delete_faiss_index(user_id)
-    del sessions[token]
+    invalidate_user_sessions(user_id)
     return {"message": f"User {user_id} deleted"}
 
 

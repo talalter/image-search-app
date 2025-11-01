@@ -1,10 +1,14 @@
 # database.py
 import sqlite3
+from datetime import datetime, timezone
+from typing import Optional, Dict, Any
 
 DB_NAME = "database.sqlite"
 
 def get_conn():
-    return sqlite3.connect(DB_NAME)
+    conn = sqlite3.connect(DB_NAME)
+    conn.execute("PRAGMA foreign_keys = ON")
+    return conn
 
 def init_db():
     conn = get_conn()
@@ -16,6 +20,17 @@ def init_db():
             username TEXT UNIQUE NOT NULL,
             password TEXT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+
+    cur.execute("""
+        CREATE TABLE IF NOT EXISTS sessions (
+            token TEXT PRIMARY KEY,
+            user_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            expires_at TIMESTAMP NOT NULL,
+            last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
         )
     """)
 
@@ -82,25 +97,26 @@ def delete_user_from_db(user_id):
     conn.close()
     
 def add_user(user):
+    from security import hash_password
     username = user.username
     password = user.password
     if not username or not password:
         raise ValueError("Username and password cannot be empty")
     conn = get_conn()
     cur = conn.cursor()
-    cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, password))
+    hashed_password = hash_password(password)
+    cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
     conn.commit()
     user_id = cur.lastrowid
     conn.close()
     return user_id
 
 def get_user_by_username_and_password(username, password):
-    conn = get_conn()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM users WHERE username = ? AND password = ?", (username, password))
-    row = cur.fetchone()
-    conn.close()
-    return row
+    from security import verify_password
+    user = get_user_by_username(username)
+    if not user:
+        return None
+    return user if verify_password(password, user[2]) else None
 
 def get_user_by_username(username):
     conn = get_conn()
@@ -118,6 +134,65 @@ def get_user_by_id(user_id):
     conn.close()
     return row
 
+
+def create_session_record(token: str, user_id: int, expires_at: datetime) -> None:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "INSERT OR REPLACE INTO sessions (token, user_id, expires_at, last_seen) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+        (token, user_id, expires_at.astimezone(timezone.utc).isoformat()),
+    )
+    conn.commit()
+    conn.close()
+
+
+def get_session_record(token: str) -> Optional[Dict[str, Any]]:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("SELECT user_id, expires_at FROM sessions WHERE token = ?", (token,))
+    row = cur.fetchone()
+    conn.close()
+    if not row:
+        return None
+    return {"user_id": row[0], "expires_at": row[1]}
+
+
+def refresh_session_expiry(token: str, new_expires_at: datetime) -> None:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE sessions SET expires_at = ?, last_seen = CURRENT_TIMESTAMP WHERE token = ?",
+        (new_expires_at.astimezone(timezone.utc).isoformat(), token),
+    )
+    conn.commit()
+    conn.close()
+
+
+def delete_session_record(token: str) -> None:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM sessions WHERE token = ?", (token,))
+    conn.commit()
+    conn.close()
+
+
+def delete_sessions_for_user(user_id: int) -> None:
+    conn = get_conn()
+    cur = conn.cursor()
+    cur.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
+
+def cleanup_expired_sessions(reference: Optional[datetime] = None) -> None:
+    conn = get_conn()
+    cur = conn.cursor()
+    now = (reference or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
+    cur.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
+    conn.commit()
+    conn.close()
+
+    
 def add_folder(user_id, folder_name):
     conn = get_conn()
     cur = conn.cursor()

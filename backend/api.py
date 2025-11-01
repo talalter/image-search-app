@@ -2,7 +2,7 @@
 from routes.user_routes import router as user_router
 from routes.images_routes import router as images_router
 from fastapi import FastAPI, HTTPException # type: ignore
-from fastapi.staticfiles import StaticFiles
+from fastapi.staticfiles import StaticFiles # type: ignore
 from pathlib import Path
 import os
 
