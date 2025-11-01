@@ -28,21 +28,14 @@ async def delete_folder(request: FolderDeleteRequest = Body(...)):
 async def upload_multiple_images(
     token: str = Form(...),
     folderName: str = Form(...),
-    #isNewFolder : str = Form(...),
     files: List[UploadFile] = File(...)
 ):
-    #print(isNewFolder)
     user_id = get_user_id_from_token(token)
     if not user_id:
         raise HTTPException(status_code=404, detail="User not found")
-    #is_new = isNewFolder.lower() == 'true' 
-    #if is_new:
+
     folder_id = add_folder(user_id, folderName)
     faiss_manager.create_faiss_index(user_id, folder_id) 
-    # else:
-    #     print("notttttttttttttttt")
-        
-    #     folder_id = get_folders_by_user_id_and_folder_name(user_id, folderName)
 
     for file in files:
         if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
