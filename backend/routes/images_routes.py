@@ -12,6 +12,8 @@ from pydantic_models import (
 from database import add_folder, add_image_to_images, get_image_path_by_image_id, get_folders_by_user_id, get_folders_by_user_id_and_folder_name, delete_folder_by_id
 from utils import embed_image
 import io
+import os
+import shutil
 from routes.session_store import get_user_id_from_token
 from PIL import Image
 from aws_handler import upload_image, get_path_to_save
@@ -22,12 +24,41 @@ faiss_manager = FaissManager()
 
 @router.delete("/delete-folders")
 async def delete_folder(request: FolderDeleteRequest = Body(...)):
+    """
+    Delete folders and all associated resources.
+    
+    This endpoint handles complete folder deletion:
+    1. Database records (folders + images tables)
+    2. Physical image files from filesystem
+    3. FAISS vector index
+    """
+    print(f"[DELETE] Received delete request for folders: {request.folder_ids}")
     user_id = get_user_id_from_token(request.token)
+    print(f"[DELETE] User ID: {user_id}")
     if not user_id:
         raise HTTPException(status_code=404, detail="User not found")
     
     for folder_id in request.folder_ids:
+        print(f"[DELETE] Deleting folder_id={folder_id} for user_id={user_id}")
+        
+        # 1. Delete database records (folders and images)
         delete_folder_by_id(folder_id, user_id)
+        print(f"[DELETE] Database records deleted")
+        
+        # 2. Delete physical image files from filesystem
+        folder_path = os.path.join("images", str(user_id), str(folder_id))
+        if os.path.exists(folder_path):
+            shutil.rmtree(folder_path)
+            print(f"[DELETE] Deleted folder path: {folder_path}")
+        else:
+            print(f"[DELETE] Folder path doesn't exist: {folder_path}")
+        
+        # 3. Delete FAISS vector index
+        faiss_manager.delete_faiss_index(user_id, folder_id)
+        print(f"[DELETE] FAISS index deleted")
+    
+    print(f"[DELETE] Successfully deleted {len(request.folder_ids)} folder(s)")
+    return {"message": f"Successfully deleted {len(request.folder_ids)} folder(s)"}
 
 @router.post("/upload-images", response_model=UploadImagesResponse)
 async def upload_multiple_images(

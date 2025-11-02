@@ -64,11 +64,22 @@ def delete_folder_by_id(folder_id, user_id):
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("DELETE FROM folders WHERE id = ? AND user_id = ?", (folder_id, user_id))
+        
+        # IMPORTANT: Delete images FIRST, then folder (foreign key constraint)
+        print(f"[DB] Deleting images for folder_id={folder_id}")
         cur.execute("DELETE FROM images WHERE folder_id = ?", (folder_id,))
+        images_deleted = cur.rowcount
+        print(f"[DB] Images deleted: {images_deleted}")
+        
+        print(f"[DB] Deleting folder with id={folder_id} and user_id={user_id}")
+        cur.execute("DELETE FROM folders WHERE id = ? AND user_id = ?", (folder_id, user_id))
+        folders_deleted = cur.rowcount
+        print(f"[DB] Folders deleted: {folders_deleted}")
+        
         conn.commit()
+        print(f"[DB] Changes committed to database")
     except sqlite3.Error as e:
-        print(f"An error occurred: {e}")
+        print(f"[DB] An error occurred: {e}")
     finally:
         conn.close()
 
