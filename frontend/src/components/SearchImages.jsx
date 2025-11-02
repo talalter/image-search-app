@@ -4,12 +4,20 @@ import { useState } from 'react';
 
 async function searchImages(query, folderIds, top_k = 1) {
   const token = localStorage.getItem('token');
+  
+  // Build query parameters for GET request
+  // GET is appropriate because search is a read-only operation
   const params = new URLSearchParams({
     token,
     query,
     top_k: top_k.toString(),
-    folders_ids: folderIds.join(',')
   });
+
+  // Add folder_ids as comma-separated string if provided
+  // If empty, backend will search all folders
+  if (folderIds.length > 0) {
+    params.append('folder_ids', folderIds.join(','));
+  }
 
   const res = await fetch(`/search-images?${params.toString()}`, {
     method: 'GET',
