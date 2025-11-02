@@ -27,8 +27,14 @@ function UploadImages({mode}) {
   const [message, setMessage] = useState('');
 
   const handleFileChange = (e) => {
-    
     const selectedFiles = Array.from(e.target.files);
+    
+    // Check if files were actually selected
+    if (selectedFiles.length === 0) {
+      return; // User cancelled or didn't select anything
+    }
+    
+    // Get folder name from first file's path
     const firstPath = selectedFiles[0].webkitRelativePath.split('/')[0];
     setFolderName(firstPath);
     setFiles(selectedFiles);
