@@ -145,16 +145,39 @@ def search_images(
         raise HTTPException(status_code=404, detail="User not found")
     
     # Parse folder_ids from comma-separated string to list
-    # If no folder_ids provided (or empty string), search all user's folders
-    if not folder_ids:
-        folder_id_list = get_folders_by_user_id(user_id)
-        folder_id_list = [folder['id'] for folder in folder_id_list]
-    else:
-        # Convert "1,2,3" to [1, 2, 3]
-        folder_id_list = [int(fid.strip()) for fid in folder_ids.split(",") if fid.strip()]
+    # If no folder_ids provided (or empty string), search all accessible folders (owned + shared)
+    from database import get_all_accessible_folders, check_folder_access, get_conn
     
-    # Perform the search
-    distances, indices = faiss_manager.search(user_id, query, folder_id_list, top_k)
+    # Build a mapping of folder_id to owner_user_id for FAISS index paths
+    folder_owner_map = {}
+    
+    if not folder_ids:
+        all_folders = get_all_accessible_folders(user_id)
+        folder_id_list = [folder['id'] for folder in all_folders]
+        # Get owner info for each folder
+        for folder in all_folders:
+            if folder.get('is_owner'):
+                folder_owner_map[folder['id']] = user_id
+            else:
+                # Shared folder - need to get owner_id
+                folder_owner_map[folder['id']] = folder.get('owner_id')
+    else:
+        # Convert "1,2,3" to [1, 2, 3] and verify user has access to each
+        requested_folder_ids = [int(fid.strip()) for fid in folder_ids.split(",") if fid.strip()]
+        folder_id_list = []
+        
+        for fid in requested_folder_ids:
+            access = check_folder_access(user_id, fid)
+            if access:  # User has access (either owns it or it's shared)
+                folder_id_list.append(fid)
+                # Determine owner for FAISS index path
+                if access.get('is_owner'):
+                    folder_owner_map[fid] = user_id
+                else:
+                    folder_owner_map[fid] = access.get('owner_id')
+    
+    # Perform the search with folder ownership information
+    distances, indices = faiss_manager.search_with_ownership(query, folder_id_list, folder_owner_map, top_k)
     
     # Build response using Pydantic models for type safety and validation
     results = []
@@ -172,15 +195,17 @@ def search_images(
 @router.get("/get-folders", response_model=FoldersListResponse)
 def get_folders(token: str):
     """
-    Get all folders for a user.
+    Get all folders for a user (owned + shared with them).
     
     Why use response_model?
     - Automatically validates the response structure
     - Generates OpenAPI documentation
     - Ensures consistent API responses
     """
+    from database import get_all_accessible_folders
+    
     user_id = get_user_id_from_token(token)
-    folders = get_folders_by_user_id(user_id)
+    folders = get_all_accessible_folders(user_id)
     
     # Return matches FoldersListResponse model structure
     return FoldersListResponse(folders=folders)

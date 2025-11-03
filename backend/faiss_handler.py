@@ -75,6 +75,49 @@ class FaissManager:
         indices = [[res[1] for res in results][:k]]
         return distances, indices
 
+    def search_with_ownership(self, query: str, folder_ids: list[int], folder_owner_map: dict[int, int], k: int = 1):
+        """
+        Search across multiple folders where each folder may be owned by different users.
+        
+        Args:
+            query: Search query text
+            folder_ids: List of folder IDs to search
+            folder_owner_map: Dict mapping folder_id to owner_user_id (for correct FAISS index path)
+            k: Number of top results to return
+            
+        Returns:
+            Tuple of (distances, indices) lists
+        """
+        query_embedding = embed_text(query).astype('float32').reshape(1, -1)
+        query_embedding = self._normalize(query_embedding)
+        
+        results = []
+
+        print(f"Searching FAISS with ownership mapping, query='{query}', folders={folder_ids}")
+        print(f"Folder ownership map: {folder_owner_map}")
+
+        for folder_id in folder_ids:
+            owner_user_id = folder_owner_map.get(folder_id)
+            if owner_user_id is None:
+                print(f"Warning: No owner found for folder {folder_id}, skipping")
+                continue
+                
+            index_path = self._get_folder_path(owner_user_id, folder_id)
+            if not os.path.exists(index_path):
+                print(f"Warning: FAISS index not found at {index_path}, skipping folder {folder_id}")
+                continue
+            
+            index = faiss.read_index(index_path)
+            local_k = min(k, index.ntotal)
+            distances, indices = index.search(query_embedding, local_k)
+            for d, i in zip(distances[0], indices[0]):
+                results.append((float(d), int(i)))
+
+        results.sort(key=lambda x: x[0], reverse=True)
+        distances = [[res[0] for res in results][:k]]
+        indices = [[res[1] for res in results][:k]]
+        return distances, indices
+
 
     def delete_faiss_index(self, user_id, folder_id):
         """Delete a FAISS index for a user."""
