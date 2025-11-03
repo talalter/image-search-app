@@ -52,37 +52,43 @@ function SearchImage({ selectedFolderIds }) {
 
   return (
     <div>
-      <h2>Search Images</h2>
-      <input
-        type="text"
-        value={query}
-        placeholder="Enter search query"
-        onChange={(e) => setQuery(e.target.value)}
-      />
-      <div style={{ marginTop: '8px' }}>
-        <label>Top K results: </label>
+      <div className="search-filters">
         <input
-          type="number"
-          value={topK}
-          min={1}
-          max={50}
-          style={{ width: '60px' }}
-          onChange={(e) => setTopK(Number(e.target.value))}
+          type="text"
+          value={query}
+          placeholder="What are you looking for?"
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
         />
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <label style={{ fontSize: '14px', color: '#64748b' }}>Top</label>
+          <input
+            type="number"
+            value={topK}
+            min={1}
+            max={50}
+            onChange={(e) => setTopK(Number(e.target.value))}
+          />
+        </div>
+        <button className="search-button" onClick={handleSearch}>
+          Search
+        </button>
       </div>
 
-      <button style={{ marginTop: '10px' }} onClick={handleSearch}>Search</button>
-
-      {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && <div className="error-message">{error}</div>}
 
       {results.length > 0 && (
         <div>
-          <h3>Top Matches:</h3>
-          <div style={{ display: 'flex', gap: '20px', flexWrap: 'wrap' }}>
+          <h3 style={{ marginTop: '24px', marginBottom: '16px', color: '#2c3e50' }}>
+            Found {results.length} matches
+          </h3>
+          <div className="results-grid">
             {results.map((item, idx) => (
-              <div key={idx}>
-                <p><strong>Similarity:</strong> {item.similarity.toFixed(4)}</p>
-                <img src={item.image} alt={`match-${idx}-${item.image}`} style={{ maxWidth: '200px' }} />
+              <div key={idx} className="result-item">
+                <img src={item.image} alt={`match-${idx}`} />
+                <div className="similarity-score">
+                  {(item.similarity * 100).toFixed(1)}% match
+                </div>
               </div>
             ))}
           </div>

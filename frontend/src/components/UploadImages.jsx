@@ -48,10 +48,18 @@ function UploadImages({mode}) {
     const isNewFolder = mode === "upload_new";
     try {
       const res = await uploadImages(files, folderName, isNewFolder);
-      setMessage(`Successfully uploaded ${res.uploaded_count} images.`);
+      setMessage(`✅ Successfully uploaded ${res.uploaded_count} images.`);
       setFiles([]);
+      setFolderName('');
     } catch (err) {
-      setMessage(`Error: ${err.message}`);
+      // Make error messages more user-friendly
+      let errorMsg = err.message;
+      if (errorMsg.includes('UNIQUE constraint')) {
+        errorMsg = `❌ Folder "${folderName}" already exists. Please rename your folder or use "Expand Existing Folder" to add more images.`;
+      } else if (errorMsg.includes('FOREIGN KEY')) {
+        errorMsg = `❌ Database error. Please try again.`;
+      }
+      setMessage(errorMsg);
     }
   };
 
@@ -78,64 +86,3 @@ function UploadImages({mode}) {
 export default UploadImages;
 
 
-
-// function UploadImage({ user }) {
-//   const [files, setFiles] = useState([]);
-//   const [message, setMessage] = useState('');
-//   const [dragActive, setDragActive] = useState(false);
-
-//   const handleDrop = (e) => {
-//     e.preventDefault();
-//     setDragActive(false);
-//     const images = Array.from(e.dataTransfer.files);
-//     setFiles(images)
-//     };
-
-//     const handleDragOver = (e) => {
-//         e.preventDefault();
-//         setDragActive(true);
-//     };  
-
-//     const handleDragLeave = (e) => {
-//         e.preventDefault();
-//         setDragActive(false);
-//     };
-
-//     const handleUpload = async () => {
-//     if (files.length === 0) {
-//       setMessage('Please select files to upload.');
-//       return;
-//     }
-//     try { 
-//         const res = await uploadImages(files);
-//         setMessage(`Successfully uploaded ${res.uploaded_count} images.`);
-//         setFiles([]); // Clear files after upload
-//       } catch (err) {
-//         setMessage(`Error: ${err.message}`);
-//       }             
-//     };
-      
-
-//     return (
-//         <div>
-//           <h2>Upload Images</h2>
-//           <div
-//             onDrop={handleDrop}
-//             onDragOver={handleDragOver}
-//             onDragLeave={handleDragLeave}
-//             style={{
-//               border: '2px dashed gray',
-//               padding: '30px',
-//               marginBottom: '10px',
-//               textAlign: 'center',
-//               backgroundColor: dragActive ? '#eee' : 'white'
-//             }}
-//           >
-//             Drag and drop images or a folder here
-//             <p>{files.length > 0 && `${files.length} file(s) selected.`}</p>
-//           </div>
-//           <button onClick={handleUpload}>Upload</button>
-//           {message && <p>{message}</p>}
-//         </div>
-//       );
-//     }

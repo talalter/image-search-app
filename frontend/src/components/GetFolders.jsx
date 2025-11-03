@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 
 
 async function getFolders() {
@@ -37,6 +37,22 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds}) {
       setFolders([]);
     }
   };
+
+  // Auto-fetch folders when component mounts
+  useEffect(() => {
+    const autoFetch = async () => {
+      setError('');
+      try {
+        const res = await getFolders();
+        setFolders(res.folders);
+        setShowFolders(true);
+      } catch (err) {
+        setError(err.message);
+        setFolders([]);
+      }
+    };
+    autoFetch();
+  }, []); // Empty dependency array = run once on mount
 
   const handleClick = (folderId) => {
     setSelectedFolderIds(prev => {

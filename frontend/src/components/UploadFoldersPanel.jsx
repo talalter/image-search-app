@@ -3,26 +3,31 @@ import UploadImages from './UploadImages.jsx';
 import GetFolders from './GetFolders.jsx';
 
 
-async function deleteFolders(folderIds) {
-    const token = localStorage.getItem("token");
-    try {
-      const res = await fetch('/delete-folders', {
-        method: 'DELETE',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, folder_ids: folderIds }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      alert("Folders deleted successfully");
-    } catch (err) {
-      alert("Error deleting folders: " + err.message);
-    }
-  }
-  
-  function UploadFolderPanel({ 
+function UploadFolderPanel({ 
     selectedFolderIds, 
     setSelectedFolderIds 
   }) {
     const [mode, setMode] = useState(null); // upload_new | expand_existing | delete_folder
+    const [refreshKey, setRefreshKey] = useState(0); // Force refresh of GetFolders
+
+    const deleteFolders = async (folderIds) => {
+      const token = localStorage.getItem("token");
+      try {
+        const res = await fetch('/delete-folders', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ token, folder_ids: folderIds }),
+        });
+        if (!res.ok) throw new Error(await res.text());
+        alert("Folders deleted successfully");
+        
+        // Clear selection and force refresh
+        setSelectedFolderIds([]);
+        setRefreshKey(prev => prev + 1);
+      } catch (err) {
+        alert("Error deleting folders: " + err.message);
+      }
+    }
   
     return (
       <div className="upload-panel">
@@ -49,6 +54,7 @@ async function deleteFolders(folderIds) {
   
           {(mode === "expand_existing" || mode === "delete_folder") && (
             <GetFolders
+              key={refreshKey}
               selectedFolderIds={selectedFolderIds}
               setSelectedFolderIds={setSelectedFolderIds}
               mode={mode}
@@ -65,6 +71,15 @@ async function deleteFolders(folderIds) {
               onClick={() => deleteFolders(selectedFolderIds)}
             >
               Delete Selected Folder(s)
+            </button>
+          )}
+
+          {mode === "upload_new" && (
+            <button
+              style={{ marginTop: '10px' }}
+              onClick={() => setRefreshKey(prev => prev + 1)}
+            >
+              🔄 Refresh Folders
             </button>
           )}
         </div>
