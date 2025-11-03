@@ -69,51 +69,137 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
   };
 
   return (
-    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '20px' }}>
-      <div style={{ width: '300px' }}>
-        <h2>Folder List</h2>
-        <button onClick={fetchFolders}>
-          {showFolders ? 'Hide Folders' : 'My Folders'}
+    <div style={{ width: '100%' }}>
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center',
+        marginBottom: '16px'
+      }}>
+        <h3 style={{ margin: 0, color: '#2c3e50' }}>
+          📁 Select Folders to Search {selectedFolderIds.length > 0 && `(${selectedFolderIds.length} selected)`}
+        </h3>
+        <button 
+          onClick={fetchFolders}
+          style={{
+            padding: '8px 16px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            color: 'white',
+            border: 'none',
+            borderRadius: '8px',
+            cursor: 'pointer',
+            fontSize: '14px',
+            fontWeight: '500'
+          }}
+        >
+          {showFolders ? '▲ Collapse' : '▼ Expand'}
         </button>
+      </div>
 
-        {error && <p style={{ color: 'red' }}>{error}</p>}
+      {error && (
+        <p style={{ 
+          color: '#c62828', 
+          background: '#ffebee', 
+          padding: '12px', 
+          borderRadius: '8px',
+          marginBottom: '12px'
+        }}>
+          {error}
+        </p>
+      )}
 
-        {showFolders && (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '10px' }}>
-            {folders.map(folder => (
-              <div
-                key={folder.id}
-                onClick={() => handleClick(folder.id)}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'space-between',
-                  border: '2px solid #ccc',
-                  borderRadius: '8px',
-                  padding: '10px',
-                  backgroundColor: selectedFolderIds.includes(folder.id) ? '#d0f0c0' : '#f9f9f9',
-                  cursor: 'pointer'
-                }}
-              >
-                <span>
-                  {folder.folder_name}
-                  {folder.is_shared && (
+      {showFolders && folders.length === 0 && !error && (
+        <p style={{ 
+          color: '#64748b', 
+          textAlign: 'center', 
+          padding: '20px',
+          background: '#f8fafc',
+          borderRadius: '8px'
+        }}>
+          No folders yet. Upload some images to create folders!
+        </p>
+      )}
+
+      {showFolders && folders.length > 0 && (
+        <div>
+          <p style={{ 
+            fontSize: '14px', 
+            color: '#64748b', 
+            marginBottom: '12px',
+            fontStyle: 'italic'
+          }}>
+            💡 Tip: Select folders to narrow your search, or leave unselected to search all folders
+          </p>
+          <div style={{ 
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',
+            gap: '12px'
+          }}>
+            {folders.map(folder => {
+              const isSelected = selectedFolderIds.includes(folder.id);
+              return (
+                <div
+                  key={folder.id}
+                  onClick={() => handleClick(folder.id)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'space-between',
+                    border: isSelected ? '2px solid #667eea' : '2px solid #e1e8ed',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    backgroundColor: isSelected ? '#f0f4ff' : 'white',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                    boxShadow: isSelected ? '0 4px 12px rgba(102, 126, 234, 0.2)' : '0 2px 4px rgba(0,0,0,0.05)'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.borderColor = '#cbd5e1';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                      e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (!isSelected) {
+                      e.currentTarget.style.borderColor = '#e1e8ed';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                      e.currentTarget.style.boxShadow = '0 2px 4px rgba(0,0,0,0.05)';
+                    }
+                  }}
+                >
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <span style={{ fontSize: '20px' }}>📁</span>
+                    <div>
+                      <div style={{ fontWeight: '500', color: '#2c3e50' }}>
+                        {folder.folder_name}
+                      </div>
+                      {folder.is_shared && (
+                        <div style={{ 
+                          fontSize: '11px',
+                          color: '#4facfe',
+                          fontWeight: '600',
+                          marginTop: '2px'
+                        }}>
+                          👥 Shared folder
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  {isSelected && (
                     <span style={{ 
-                      marginLeft: '8px', 
-                      fontSize: '12px',
-                      color: '#4facfe',
-                      fontWeight: 'bold'
+                      fontSize: '18px',
+                      color: '#667eea'
                     }}>
-                      👥 Shared
+                      ✓
                     </span>
                   )}
-                </span>
-                <span>{selectedFolderIds.includes(folder.id) ? '✔️' : ''}</span>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   );
 }
