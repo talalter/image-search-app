@@ -21,7 +21,7 @@ async function uploadImages(files, folderName) {
   return await res.json();
 }
 
-function UploadImages({mode}) {
+function UploadImages({mode, onUploadSuccess}) {
   const [files, setFiles] = useState([]);
   const [folderName, setFolderName] = useState('');
   const [message, setMessage] = useState('');
@@ -51,6 +51,15 @@ function UploadImages({mode}) {
       setMessage(`✅ Successfully uploaded ${res.uploaded_count} images.`);
       setFiles([]);
       setFolderName('');
+      
+      // Reset file input
+      const fileInput = document.querySelector('input[type="file"]');
+      if (fileInput) fileInput.value = '';
+      
+      // Notify parent component that upload was successful
+      if (onUploadSuccess) {
+        onUploadSuccess();
+      }
     } catch (err) {
       // Make error messages more user-friendly
       let errorMsg = err.message;

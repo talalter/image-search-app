@@ -50,7 +50,11 @@ function UploadFolderPanel({
         </div>
   
         <div className="panel-content">
-          {mode === "upload_new" && <UploadImages />}
+          {mode === "upload_new" && (
+            <UploadImages 
+              onUploadSuccess={() => setRefreshKey(prev => prev + 1)}
+            />
+          )}
   
           {(mode === "expand_existing" || mode === "delete_folder") && (
             <GetFolders
@@ -58,11 +62,15 @@ function UploadFolderPanel({
               selectedFolderIds={selectedFolderIds}
               setSelectedFolderIds={setSelectedFolderIds}
               mode={mode}
+              refreshTrigger={refreshKey}
             />
           )}
   
           {mode === "expand_existing" && selectedFolderIds.length > 0 && (
-            <UploadImages folderId={selectedFolderIds[0]} />
+            <UploadImages 
+              folderId={selectedFolderIds[0]} 
+              onUploadSuccess={() => setRefreshKey(prev => prev + 1)}
+            />
           )}
   
           {mode === "delete_folder" && selectedFolderIds.length > 0 && (
@@ -71,15 +79,6 @@ function UploadFolderPanel({
               onClick={() => deleteFolders(selectedFolderIds)}
             >
               Delete Selected Folder(s)
-            </button>
-          )}
-
-          {mode === "upload_new" && (
-            <button
-              style={{ marginTop: '10px' }}
-              onClick={() => setRefreshKey(prev => prev + 1)}
-            >
-              🔄 Refresh Folders
             </button>
           )}
         </div>

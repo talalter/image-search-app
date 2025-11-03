@@ -17,7 +17,7 @@ async function getFolders() {
   return await res.json();
 }
 
-function GetFolders({selectedFolderIds, setSelectedFolderIds}) {
+function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, refreshTrigger}) {
   const [folders, setFolders] = useState([]);
   const [error, setError] = useState('');
   const [showFolders, setShowFolders] = useState(false);
@@ -38,7 +38,7 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds}) {
     }
   };
 
-  // Auto-fetch folders when component mounts
+  // Auto-fetch folders when component mounts OR when refreshTrigger changes
   useEffect(() => {
     const autoFetch = async () => {
       setError('');
@@ -46,13 +46,17 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds}) {
         const res = await getFolders();
         setFolders(res.folders);
         setShowFolders(true);
+        // Update parent component's folders if callback provided
+        if (onFoldersUpdate) {
+          onFoldersUpdate(res.folders);
+        }
       } catch (err) {
         setError(err.message);
         setFolders([]);
       }
     };
     autoFetch();
-  }, []); // Empty dependency array = run once on mount
+  }, [onFoldersUpdate, refreshTrigger]); // Re-run when refreshTrigger changes
 
   const handleClick = (folderId) => {
     setSelectedFolderIds(prev => {
@@ -91,7 +95,19 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds}) {
                   cursor: 'pointer'
                 }}
               >
-                <span>{folder.folder_name}</span>
+                <span>
+                  {folder.folder_name}
+                  {folder.is_shared && (
+                    <span style={{ 
+                      marginLeft: '8px', 
+                      fontSize: '12px',
+                      color: '#4facfe',
+                      fontWeight: 'bold'
+                    }}>
+                      👥 Shared
+                    </span>
+                  )}
+                </span>
                 <span>{selectedFolderIds.includes(folder.id) ? '✔️' : ''}</span>
               </div>
             ))}
