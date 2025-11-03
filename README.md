@@ -7,7 +7,16 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ed.svg)](https://www.docker.com/)
 
-## 🌟 Features
+## � Key Highlights
+
+- 🤖 **AI-Powered Search**: Uses OpenAI's CLIP model for semantic understanding ("sunset beach" finds beach sunset photos)
+- ⚡ **Efficient Vector Search**: FAISS similarity search on 512-dimensional embeddings
+- 🐳 **Production-Ready**: Fully containerized with Docker, ready to deploy
+- 🔐 **Enterprise Security**: PBKDF2 password hashing (390K iterations), session-based auth
+- 👥 **Multi-User Platform**: Complete user isolation with folder sharing capabilities
+- 📦 **Full-Stack Modern**: React frontend, FastAPI backend, SQLite database
+
+## �🌟 Features
 
 ### Core Functionality
 - **🔐 User Authentication**: Secure registration, login, and session management
@@ -49,7 +58,7 @@ Frontend (React + Nginx) ←→ Backend (FastAPI) ←→ CLIP Model
 git clone https://github.com/talalter/image-search-app.git
 cd image-search-app
 
-# Build and start containers
+# Build and start containers (first time takes ~5 minutes)
 docker-compose up --build
 
 # Access the application
@@ -275,13 +284,18 @@ This is a portfolio project, but suggestions are welcome! Feel free to:
 
 ## 📄 License
 
-MIT License - see LICENSE file for details
+MIT License - see [LICENSE](LICENSE) file for details
 
 ## 👤 Author
 
 **Tal Alter**
 - GitHub: [@talalter](https://github.com/talalter)
-- Project: [image-search-app](https://github.com/talalter/image-search-app)
+- LinkedIn: [Add your LinkedIn URL here]
+- Project Repository: [image-search-app](https://github.com/talalter/image-search-app)
+
+---
+
+**⭐ If you found this project interesting, please consider giving it a star!**
 
 ## 🙏 Acknowledgments
 
