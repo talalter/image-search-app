@@ -5,6 +5,7 @@ __pycache__/
 *.pkl
 *.npy
 *.sqlite
+*.db
 *.jpeg
 *.jpg
 *.png

@@ -16,6 +16,26 @@
 
 ## Critical Backend Patterns
 
+### Pydantic Response Models (REQUIRED)
+**Always use response_model for endpoint responses:**
+```python
+@router.post("/login", response_model=LoginResponse)
+def login(payload: UserIn):
+    return LoginResponse(token=token, user_id=user_id, username=username)
+```
+Why? 
+- Type safety and automatic validation
+- Consistent API contracts
+- Auto-generated OpenAPI docs
+- Prevents accidental data leakage
+
+**Available response models** (see `pydantic_models.py`):
+- `LoginResponse`: Login endpoint
+- `UserOut`: User registration
+- `SearchImageResponse`: Image search results
+- `UploadImagesResponse`: Image upload confirmation
+- `FoldersListResponse`: Folder listings
+
 ### File Upload Pattern (multipart/form-data)
 **Use Form(...) + File(...) instead of Pydantic models for file uploads:**
 ```python
@@ -72,15 +92,33 @@ sessions (token, user_id, expires_at, last_seen) [CASCADE on user delete]
 ### State Management
 **No Redux/Context** – Local state + props drilling:
 - `App.jsx` manages `user`, `selectedFolderIdsforSearch`, `SelectedFolderIdsforUpload`
-- Token stored in `localStorage.getItem('token')`
+- Token stored in `localStorage` via `saveToken()`/`getToken()` functions
 - Components communicate via callback props (`setSelectedFolderIds`)
 
-### API Communication Pattern
-**All requests proxy through React dev server** (`proxy: "http://localhost:9999"` in `frontend/package.json`):
+### API Communication Pattern (REFACTORED)
+**Use centralized API utility layer** (`frontend/src/utils/api.js`):
 ```javascript
-const params = new URLSearchParams({ token, query });
-const res = await fetch(`/search-images?${params.toString()}`, { method: 'GET' });
+import { loginUser, saveToken, APIError, HTTP_STATUS } from '../utils/api';
+
+// Make API calls through utility functions
+const userData = await loginUser(username, password);
+saveToken(userData.token);
 ```
+
+**Benefits:**
+- Single source of truth for endpoints (`API_ENDPOINTS`)
+- Consistent error handling with `APIError` class
+- Named HTTP status codes (`HTTP_STATUS.UNAUTHORIZED`)
+- JSDoc documentation for all functions
+- Easy to mock in tests
+
+**Legacy pattern** (being phased out):
+```javascript
+// OLD - Direct fetch calls
+const res = await fetch('/login', { method: 'POST', ... });
+```
+
+**All requests proxy through React dev server** (`proxy: "http://localhost:9999"` in `frontend/package.json`):
 No `REACT_APP_API_URL` needed – proxy handles routing during dev.
 
 ### Folder Selection UX
@@ -139,19 +177,86 @@ from fastapi import UploadFile, File
 from database import add_folder
 ```
 
+### API Development Best Practices
+
+#### Backend Endpoint Pattern
+```python
+@router.post("/endpoint", response_model=ResponseModel)
+def endpoint_name(payload: RequestModel):
+    """
+    Clear docstring explaining:
+    - What the endpoint does
+    - Security considerations
+    - Process flow
+    """
+    # Explicit tuple unpacking (not magic indexes)
+    user_id, username, field3 = db_result
+    
+    # Return Pydantic model instance
+    return ResponseModel(field1=value1, field2=value2)
+```
+
+#### Frontend API Call Pattern
+```javascript
+// In frontend/src/utils/api.js
+/**
+ * Function description
+ * @param {type} param - Description
+ * @returns {Promise<{field: type}>} Description
+ * @throws {APIError} When error occurs
+ */
+export async function apiFunction(param) {
+  return post(API_ENDPOINTS.ENDPOINT, { param });
+}
+
+// In component
+import { apiFunction, APIError, HTTP_STATUS } from '../utils/api';
+
+try {
+  const result = await apiFunction(value);
+  // Handle success
+} catch (err) {
+  if (err instanceof APIError) {
+    if (err.status === HTTP_STATUS.UNAUTHORIZED) {
+      // Handle specific error
+    }
+  }
+}
+```
+
 ### Type Hints & Validation
 - **Backend**: Pydantic models in `pydantic_models.py` for request/response validation
-- **Frontend**: Propless validation – runtime checks via `if (!user)` patterns
+  - Always use `response_model` parameter on endpoints
+  - Tuple unpacking instead of magic indexes: `user_id, username, password_hash, created_at = db_user`
+- **Frontend**: JSDoc for type documentation + client-side validation
+  - JSDoc parameters: `@param {string} username - User's username`
+  - JSDoc returns: `@returns {Promise<{token: string, user_id: number}>}`
+  - Validate forms before API calls (e.g., `validateForm()` in Login)
 - Use `# type: ignore` for third-party imports without stubs
 
 ### Error Handling
-- **Backend**: Raise `HTTPException` with specific status codes (401, 404, 400)
-- **Frontend**: Try-catch with `alert()` for user feedback (no toast library)
+- **Backend**: 
+  - Raise `HTTPException` with specific status codes (401, 404, 400)
+  - Use generic error messages to prevent username enumeration
+  - Add comprehensive docstrings explaining security considerations
+- **Frontend**: 
+  - Use `APIError` class with status codes for structured error handling
+  - Context-aware error messages: "Invalid username or password" vs "Server error"
+  - Client-side validation with helpful messages before API calls
 
 ## Key Files Reference
 
+### Backend
 - `backend/api.py`: FastAPI app entry, router registration, static file mounting
-- `backend/faiss_handler.py`: FaissManager class encapsulates all vector operations
+- `backend/pydantic_models.py`: Request/response models (UserIn, LoginResponse, SearchImageResponse, etc.)
+- `backend/routes/user_routes.py`: Auth endpoints (login, register, logout) with Pydantic response models
 - `backend/routes/images_routes.py`: Upload/search/folder endpoints with detailed docstrings
+- `backend/faiss_handler.py`: FaissManager class encapsulates all vector operations
+- `backend/security.py`: Password hashing (PBKDF2-HMAC-SHA256)
+- `backend/routes/session_store.py`: Token management (issue, validate, refresh)
+
+### Frontend
 - `frontend/src/App.jsx`: Main layout, auth state, folder selection state management
+- `frontend/src/utils/api.js`: **Centralized API layer** with endpoints, error handling, token management
+- `frontend/src/components/Login.jsx`: Login form with validation using API utility functions
 - `frontend/src/components/SearchImages.jsx`: Query input, results display, folder filtering
