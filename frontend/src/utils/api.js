@@ -123,7 +123,7 @@ export async function loginUser(username, password) {
  * Register new user account
  * 
  * @param {string} username - Desired username
- * @param {string} password - Account password (min 6 characters recommended)
+ * @param {string} password - Account password (min 6 characters)
  * @returns {Promise<{id: number, username: string}>}
  * @throws {APIError} If username exists or validation fails
  */
