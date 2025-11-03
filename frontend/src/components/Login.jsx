@@ -1,34 +1,83 @@
 import React from 'react';
 import { useState } from 'react';
+import { loginUser, saveToken, APIError, HTTP_STATUS } from '../utils/api';
 
+/**
+ * Login Component
+ * 
+ * Handles user authentication with:
+ * - Client-side validation
+ * - Error handling with specific messages
+ * - Loading states
+ * - Token management
+ */
 function Login({ onLogin }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
+  /**
+   * Validate form inputs before submission
+   * @returns {{valid: boolean, error: string|null}}
+   */
+  const validateForm = () => {
+    if (!username.trim()) {
+      return { valid: false, error: 'Username is required' };
+    }
+    if (username.length < 3) {
+      return { valid: false, error: 'Username must be at least 3 characters' };
+    }
+    if (!password) {
+      return { valid: false, error: 'Password is required' };
+    }
+    if (password.length < 6) {
+      return { valid: false, error: 'Password must be at least 6 characters' };
+    }
+    return { valid: true, error: null };
+  };
+
+  /**
+   * Handle login form submission
+   */
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    
+    // Client-side validation
+    const validation = validateForm();
+    if (!validation.valid) {
+      setError(validation.error);
+      return;
+    }
+    
     setLoading(true);
     
     try {
-      const res = await fetch('/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
+      // Call API utility function
+      const userData = await loginUser(username, password);
       
-      if (!res.ok) { 
-        throw new Error(data.detail || 'Invalid username or password');
-      }
-
-      localStorage.setItem('token', data.token);
-      onLogin(data);
+      // Save token to localStorage
+      saveToken(userData.token);
+      
+      // Update parent component state
+      onLogin(userData);
+      
     } catch (err) {
-      setError(err.message);
+      // Handle specific error cases
+      if (err instanceof APIError) {
+        if (err.status === HTTP_STATUS.UNAUTHORIZED) {
+          setError('Invalid username or password');
+        } else if (err.status === HTTP_STATUS.UNPROCESSABLE_ENTITY) {
+          setError('Please check your input and try again');
+        } else if (err.status >= HTTP_STATUS.INTERNAL_SERVER_ERROR) {
+          setError('Server error. Please try again later');
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError('Network error. Please check your connection');
+      }
     } finally {
       setLoading(false);
     }

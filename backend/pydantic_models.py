@@ -12,6 +12,13 @@ class UserOut(BaseModel):
     id: int
     username: str
 
+class LoginResponse(BaseModel):
+    """Response model for successful login"""
+    token: str
+    user_id: int
+    username: str
+    message: str = "Login successful"
+
 # ============== Folder Models ==============
 class FolderDeleteRequest(BaseModel):
     """Request to delete one or more folders"""

@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Body, HTTPException # type: ignore
-from pydantic_models import UserIn, UserOut
+from pydantic_models import UserIn, UserOut, LoginResponse
 from database import init_db, add_user, get_user_by_username, delete_user_from_db
 from faiss_handler import FaissManager
 import uuid
@@ -29,23 +29,51 @@ def register(user: UserIn):
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@router.post("/login")
+@router.post("/login", response_model=LoginResponse)
 def login(payload: UserIn):
+    """
+    Authenticate user and create session.
+    
+    Process:
+    1. Validate credentials against database
+    2. Generate secure session token
+    3. Return token for subsequent requests
+    
+    Security:
+    - Passwords are hashed with PBKDF2-HMAC-SHA256
+    - Generic error messages prevent username enumeration
+    - Tokens expire after 12 hours of inactivity
+    """
     init_db()
+    
+    # Look up user by username
     db_user = get_user_by_username(payload.username)
     if not db_user:
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-    db_password = db_user[2] 
-    if not verify_password(payload.password, db_password):
-        raise HTTPException(status_code=401, detail="Incorrect password")
-    user_id = db_user[0]
+        # Generic message prevents attackers from knowing if username exists
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid username or password"
+        )
+    
+    # Extract fields from database tuple
+    user_id, username, db_password_hash, created_at = db_user
+    
+    # Verify password using secure hash comparison
+    if not verify_password(payload.password, db_password_hash):
+        raise HTTPException(
+            status_code=401, 
+            detail="Invalid username or password"
+        )
+    
+    # Create session token (stored in database with 12-hour expiry)
     token = issue_session_token(user_id)
-    return {
-        "message": "Login successful",
-        "token": token,
-        "user_id": user_id,
-        "username": payload.username
-    }
+    
+    # Return structured response using Pydantic model
+    return LoginResponse(
+        token=token,
+        user_id=user_id,
+        username=username
+    )
 
 
 @router.post("/logout")
