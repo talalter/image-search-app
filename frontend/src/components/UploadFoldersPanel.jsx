@@ -31,7 +31,6 @@ function UploadFolderPanel({
   
     return (
       <div className="upload-panel">
-        <h3>Manage Folders</h3>
   
         <div className="mode-buttons">
 
