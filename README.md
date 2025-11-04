@@ -59,7 +59,114 @@ Frontend (React + Nginx) ←→ Backend (FastAPI) ←→ CLIP Model
               (users/folders)  (embeddings)  (storage)
 ```
 
-![Architecture Diagram](architecture_diagram.svg)
+### Database Schema
+
+```mermaid
+erDiagram
+    users ||--o{ folders : owns
+    users ||--o{ images : owns
+    users ||--o{ sessions : has
+    users ||--o{ folder_shares : "shares from"
+    users ||--o{ folder_shares : "receives shares"
+    folders ||--o{ images : contains
+    folders ||--o{ folder_shares : "shared"
+    
+    users {
+        int id PK
+        string username UK
+        string password_hash
+        datetime created_at
+    }
+    
+    folders {
+        int id PK
+        int user_id FK
+        string folder_name
+        unique(user_id, folder_name)
+    }
+    
+    images {
+        int id PK
+        int user_id FK
+        int folder_id FK
+        string filepath
+    }
+    
+    sessions {
+        string token PK
+        int user_id FK "CASCADE"
+        datetime expires_at
+        datetime last_seen
+    }
+    
+    folder_shares {
+        int id PK
+        int folder_id FK
+        int owner_id FK
+        int shared_with_user_id FK
+        string permission "view/edit"
+    }
+```
+
+**Key Constraints:**
+- `folders`: UNIQUE constraint on `(user_id, folder_name)` - prevents duplicate folder names per user
+- `sessions`: CASCADE DELETE on `user_id` - sessions automatically deleted when user is deleted
+- Foreign keys enabled globally: `PRAGMA foreign_keys = ON`
+
+### Authentication Flow
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant Backend
+    participant Database
+    participant SessionStore
+    
+    Note over User,SessionStore: Login Flow
+    User->>Frontend: Enter credentials
+    Frontend->>Backend: POST /login {username, password}
+    Backend->>Database: Query user by username
+    Database-->>Backend: User record
+    Backend->>Backend: Verify password (PBKDF2-HMAC-SHA256)
+    Backend->>SessionStore: Generate token (32-byte random)
+    SessionStore->>Database: Store session (12h TTL)
+    Backend-->>Frontend: {token, user_id, username}
+    Frontend->>Frontend: Save token to localStorage
+    
+    Note over User,SessionStore: Authenticated Request Flow
+    User->>Frontend: Search/Upload action
+    Frontend->>Backend: GET/POST endpoint + token
+    Backend->>SessionStore: Validate token
+    SessionStore->>Database: Check token exists & not expired
+    alt Token Valid
+        Database-->>SessionStore: Session data
+        SessionStore->>SessionStore: Refresh expiry (+12h)
+        SessionStore->>Database: Update last_seen
+        Backend->>Backend: Process request
+        Backend-->>Frontend: Success response
+    else Token Invalid/Expired
+        SessionStore->>Database: Delete expired sessions
+        Backend-->>Frontend: 401 Unauthorized
+        Frontend->>Frontend: Clear token, redirect to login
+    end
+    
+    Note over User,SessionStore: Logout Flow
+    User->>Frontend: Click logout
+    Frontend->>Backend: POST /logout {token}
+    Backend->>SessionStore: Delete session
+    SessionStore->>Database: DELETE FROM sessions
+    Backend-->>Frontend: Success
+    Frontend->>Frontend: Clear localStorage
+    Frontend->>Frontend: Redirect to login
+```
+
+**Security Features:**
+- **Password Hashing**: PBKDF2-HMAC-SHA256 with 390,000 iterations (OWASP recommended)
+- **Session Tokens**: 32-byte URL-safe random strings (`secrets.token_urlsafe(32)`)
+- **Auto-Refresh**: Session expiry extended on each valid request (sliding window)
+- **Auto-Cleanup**: Expired sessions deleted before each validation check
+- **Generic Errors**: "Invalid username or password" prevents username enumeration
 
 ## 🚀 Quick Start with Docker
 
