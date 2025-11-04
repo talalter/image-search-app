@@ -38,6 +38,8 @@ def upload_folder_to_local(file, key, upload_type='folder'):
         file.file.seek(0)
         with open(folder_path, 'wb') as f:
             f.write(file.file.read())
+    
+    return folder_path
 
 def generate_presigned_url(s3_key: str, bucket_name=BUCKET_NAME, expiration=60) -> str:
     s3 = boto3.client(
@@ -62,10 +64,13 @@ def get_path_to_save(key:str):
 
 
 def upload_image(file, key, upload_type='folder'):
-
+    """
+    Upload image and return the local file path for later processing.
+    Returns: Local file path (for background processing)
+    """
     if storage_backend == 'local': 
-        upload_folder_to_local(file, key, upload_type)
-
+        return upload_folder_to_local(file, key, upload_type)
 
     elif storage_backend == 'aws':
-        upload_folder_to_bucket(file, key, upload_type) 
+        upload_folder_to_bucket(file, key, upload_type)
+        return key  # S3 key can be used to retrieve later 

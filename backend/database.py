@@ -76,10 +76,10 @@ def init_db():
     conn.close()
 
 def delete_folder_by_id(folder_id, user_id):
+    conn = get_conn()
+    cur = conn.cursor()
+    
     try:
-        conn = get_conn()
-        cur = conn.cursor()
-        
         # IMPORTANT: Delete images FIRST, then folder (foreign key constraint)
         print(f"[DB] Deleting images for folder_id={folder_id}")
         cur.execute("DELETE FROM images WHERE folder_id = ?", (folder_id,))
@@ -91,10 +91,20 @@ def delete_folder_by_id(folder_id, user_id):
         folders_deleted = cur.rowcount
         print(f"[DB] Folders deleted: {folders_deleted}")
         
+        if folders_deleted == 0:
+            raise ValueError(f"Folder {folder_id} not found or you don't have permission to delete it")
+        
         conn.commit()
         print(f"[DB] Changes committed to database")
+        return True
     except sqlite3.Error as e:
-        print(f"[DB] An error occurred: {e}")
+        conn.rollback()
+        print(f"[DB] Database error occurred: {e}")
+        raise  # Re-raise the exception so the endpoint knows it failed
+    except ValueError as e:
+        conn.rollback()
+        print(f"[DB] Validation error: {e}")
+        raise  # Re-raise the exception
     finally:
         conn.close()
 
@@ -131,11 +141,15 @@ def add_user(user):
     conn = get_conn()
     cur = conn.cursor()
     hashed_password = hash_password(password)
-    cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
-    conn.commit()
-    user_id = cur.lastrowid
-    conn.close()
-    return user_id
+    try:
+        cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
+        conn.commit()
+        user_id = cur.lastrowid
+        conn.close()
+        return user_id
+    except sqlite3.IntegrityError:
+        conn.close()
+        raise ValueError(f"Username '{username}' is already taken")
 
 def get_user_by_username_and_password(username, password):
     from security import verify_password

@@ -1,6 +1,6 @@
 from typing import List, Optional
 from faiss_handler import FaissManager
-from fastapi import UploadFile, File, Body, APIRouter, Form, HTTPException # type: ignore
+from fastapi import UploadFile, File, Body, APIRouter, Form, HTTPException, BackgroundTasks # type: ignore
 from pydantic_models import (
     FolderDeleteRequest,
     FoldersListResponse,
@@ -17,9 +17,43 @@ import shutil
 from routes.session_store import get_user_id_from_token
 from PIL import Image
 from aws_handler import upload_image, get_path_to_save
+import logging
+
+# Module logger
+logger = logging.getLogger("image_search_app.routes.images")
+if not logger.handlers:
+    # Configure basic logging in case the application hasn't configured logging yet
+    logging.basicConfig(level=logging.INFO)
+
 
 router = APIRouter()
 faiss_manager = FaissManager()
+
+
+def process_images_background(user_id: int, folder_id: int, image_paths: List[tuple]):
+    """
+    Background task to process images: generate embeddings and add to FAISS index.
+    This runs after the user receives a successful response.
+    
+    Args:
+        user_id: User ID
+        folder_id: Folder ID
+        image_paths: List of tuples (image_id, file_path)
+    """
+    logger.info("[BACKGROUND] Starting processing of %d images for user %s, folder %s", len(image_paths), user_id, folder_id)
+
+    for image_id, file_path in image_paths:
+        try:
+            # Load image and generate embedding
+            image = Image.open(file_path).convert("RGB")
+            embedding = embed_image(image)
+
+            # Add to FAISS index
+            faiss_manager.add_vector_to_faiss(user_id, folder_id, embedding, image_id)
+            logger.info("[BACKGROUND] Processed image %s (path=%s)", image_id, file_path)
+        except Exception:
+            logger.exception("[BACKGROUND] Error processing image %s (path=%s)", image_id, file_path)
+    
 
 
 @router.delete("/delete-folders")
@@ -41,27 +75,37 @@ async def delete_folder(request: FolderDeleteRequest = Body(...)):
     for folder_id in request.folder_ids:
         print(f"[DELETE] Deleting folder_id={folder_id} for user_id={user_id}")
         
-        # 1. Delete database records (folders and images)
-        delete_folder_by_id(folder_id, user_id)
-        print(f"[DELETE] Database records deleted")
-        
-        # 2. Delete physical image files from filesystem
-        folder_path = os.path.join("images", str(user_id), str(folder_id))
-        if os.path.exists(folder_path):
-            shutil.rmtree(folder_path)
-            print(f"[DELETE] Deleted folder path: {folder_path}")
-        else:
-            print(f"[DELETE] Folder path doesn't exist: {folder_path}")
-        
-        # 3. Delete FAISS vector index
-        faiss_manager.delete_faiss_index(user_id, folder_id)
-        print(f"[DELETE] FAISS index deleted")
+        try:
+            # 1. Delete database records (folders and images)
+            # This will CASCADE delete folder_shares automatically
+            delete_folder_by_id(folder_id, user_id)
+            print(f"[DELETE] Database records deleted")
+            
+            # 2. Delete physical image files from filesystem
+            folder_path = os.path.join("images", str(user_id), str(folder_id))
+            if os.path.exists(folder_path):
+                shutil.rmtree(folder_path)
+                print(f"[DELETE] Deleted folder path: {folder_path}")
+            else:
+                print(f"[DELETE] Folder path doesn't exist: {folder_path}")
+            
+            # 3. Delete FAISS vector index
+            faiss_manager.delete_faiss_index(user_id, folder_id)
+            print(f"[DELETE] FAISS index deleted")
+        except ValueError as e:
+            # Folder not found or permission denied
+            raise HTTPException(status_code=403, detail=str(e))
+        except Exception as e:
+            # Other errors (database, filesystem, FAISS)
+            print(f"[DELETE] Error deleting folder {folder_id}: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete folder {folder_id}: {str(e)}")
     
     print(f"[DELETE] Successfully deleted {len(request.folder_ids)} folder(s)")
     return {"message": f"Successfully deleted {len(request.folder_ids)} folder(s)"}
 
 @router.post("/upload-images", response_model=UploadImagesResponse)
 async def upload_multiple_images(
+    background_tasks: BackgroundTasks,
     token: str = Form(...),
     folderName: str = Form(...),
     files: List[UploadFile] = File(...)
@@ -85,35 +129,47 @@ async def upload_multiple_images(
     if not files:
         raise HTTPException(status_code=400, detail="No files provided")
 
-    # Create folder and FAISS index for it
-    folder_id = add_folder(user_id, folderName)
-    faiss_manager.create_faiss_index(user_id, folder_id)
+    # Check if folder already exists, if not create it
+    folder_id = get_folders_by_user_id_and_folder_name(user_id, folderName)
+    if folder_id is None:
+        # Create new folder and FAISS index
+        folder_id = add_folder(user_id, folderName)
+        faiss_manager.create_faiss_index(user_id, folder_id)
+    # If folder exists, we'll just add images to the existing folder and index
     
     uploaded_count = 0
+    image_paths_for_processing = []
     
-    # Process each uploaded file
+    # FAST PATH: Just save files and create DB records (no CLIP processing yet)
     for file in files:
         # Validate file type
         if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             raise HTTPException(status_code=400, detail=f"Invalid file type: {file.filename}")
         
-        # Read and process the image
-        file.file.seek(0)
-        image = Image.open(file.file).convert("RGB")        
-        embedding = embed_image(image)
-
-        # Save image and create database record
+        # Save image and create database record (fast operations)
         s3_key = f"images/{user_id}/{folder_id}/{file.filename}"
         image_id = add_image_to_images(user_id, s3_key, folder_id)
-        upload_image(file, s3_key, upload_type='folder')
-
-        # Add embedding to FAISS index for searching
-        faiss_manager.add_vector_to_faiss(user_id, folder_id, embedding, image_id)
+        
+        # Reset file pointer and save
+        file.file.seek(0)
+        saved_path = upload_image(file, s3_key, upload_type='folder')
+        
+        # Store for background processing
+        image_paths_for_processing.append((image_id, saved_path))
         uploaded_count += 1
 
-    # Return structured response using Pydantic model
+    # Schedule background task to process embeddings (CLIP + FAISS)
+    # This happens AFTER we return the response to the user
+    background_tasks.add_task(
+        process_images_background,
+        user_id,
+        folder_id,
+        image_paths_for_processing
+    )
+
+    # Return immediately - user doesn't wait for CLIP processing!
     return UploadImagesResponse(
-        message=f"Successfully uploaded {uploaded_count} images",
+        message=f"Successfully uploaded {uploaded_count} images. Processing embeddings in background...",
         folder_id=folder_id,
         uploaded_count=uploaded_count
     )

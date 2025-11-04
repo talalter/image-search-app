@@ -225,41 +225,6 @@ AWS_REGION=us-east-1
 - Frontend proxies API requests to `backend:9999`
 - Only ports 3000 and 9999 exposed to host
 
-## 🚢 Deployment Options
-
-### Railway (Recommended - Free Tier)
-1. Push code to GitHub
-2. Connect Railway to your repo
-3. Add environment variables in dashboard
-4. Railway auto-detects Docker Compose
-
-### Render
-1. Create Web Service for backend (Docker)
-2. Create Static Site for frontend
-3. Set environment variables
-4. Connect to GitHub for auto-deploys
-
-### AWS/DigitalOcean
-1. Set up EC2/Droplet instance
-2. Install Docker & Docker Compose
-3. Clone repo and run `docker-compose up -d`
-4. Configure reverse proxy (Nginx) for HTTPS
-
-## 🧪 Testing
-
-```bash
-# Run multi-user isolation tests
-cd backend
-python3 test_multi_user.py
-```
-
-Tests cover:
-- User registration and login
-- Folder isolation between users
-- Search result isolation
-- FAISS index separation
-- Folder sharing permissions
-- Session independence
 
 ## 🔒 Security
 

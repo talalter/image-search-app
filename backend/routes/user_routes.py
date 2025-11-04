@@ -21,13 +21,24 @@ def read_root():
     
 @router.post("/register", response_model=UserOut)
 def register(user: UserIn):
+    """
+    Register a new user account.
+    
+    Returns:
+    - 200: User created successfully
+    - 400: Username already taken or validation error
+    """
     try:
         init_db()
         user_id = add_user(user)
         faiss_manager.create_user_faiss_folder(user_id)
         return {"id": user_id, "username": user.username}
-    except Exception as e:
+    except ValueError as e:
+        # Specific error for duplicate username or validation issues
         raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        # Generic error for unexpected issues
+        raise HTTPException(status_code=500, detail="Registration failed. Please try again.")
 
 @router.post("/login", response_model=LoginResponse)
 def login(payload: UserIn):
@@ -77,7 +88,7 @@ def login(payload: UserIn):
 
 
 @router.post("/logout")
-def logout(token: str = Body(...)):
+def logout(token: str = Body(..., embed=True)):
     try:
         get_user_id_from_token(token)
     except Exception:
