@@ -85,16 +85,6 @@ async function post(endpoint, body) {
   });
 }
 
-/**
- * GET request helper
- * @private
- */
-async function get(endpoint, params = {}) {
-  const queryString = new URLSearchParams(params).toString();
-  const url = queryString ? `${endpoint}?${queryString}` : endpoint;
-  return apiRequest(url, { method: 'GET' });
-}
-
 // ============== User Authentication API ==============
 
 /**

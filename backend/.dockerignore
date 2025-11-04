@@ -1,0 +1,49 @@
+# Backend .dockerignore
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+talenv/
+venv/
+ENV/
+env/
+
+# Runtime data
+images/
+faisses_indexes/
+*.sqlite
+*.db
+*.faiss
+*.pkl
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+
+# Test
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Documentation
+*.md
+README.md

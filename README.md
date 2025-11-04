@@ -16,7 +16,23 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 - 👥 **Multi-User Platform**: Complete user isolation with folder sharing capabilities
 - 📦 **Full-Stack Modern**: React frontend, FastAPI backend, SQLite database
 
-## �🌟 Features
+## 📸 Screenshots
+
+### Login & Registration
+![Login Page](docs/screenshots/login.png)
+
+### Upload Images
+![Upload Interface](docs/screenshots/upload.png)
+
+### Search Results
+![Search Results showing semantic matches](docs/screenshots/search.png)
+
+### Folder Management
+![Folder organization with sharing options](docs/screenshots/folders.png)
+
+> **Note**: Add actual screenshots to `docs/screenshots/` folder before uploading to GitHub
+
+## 🌟 Features
 
 ### Core Functionality
 - **🔐 User Authentication**: Secure registration, login, and session management
@@ -109,8 +125,10 @@ npm start  # Runs on port 3000, proxies API to :9999
 
 ## 📖 Usage Guide
 
+> **💡 First Time Setup**: The app starts with an empty database. Simply register a new account to begin!
+
 ### 1. Register & Login
-- Create an account with username/password
+- Create an account with username/password (e.g., `demo` / `demo123`)
 - Login to receive authentication token (stored in localStorage)
 
 ### 2. Create Folders
@@ -148,7 +166,7 @@ image-search-app/
 │   │   └── sharing_routes.py   # Folder sharing
 │   ├── images/                 # Uploaded images (volume)
 │   ├── faisses_indexes/        # FAISS indexes (volume)
-│   ├── backend.db              # SQLite database (volume)
+│   ├── database.sqlite         # SQLite database (volume)
 │   └── Dockerfile
 │
 ├── frontend/
@@ -197,9 +215,9 @@ AWS_REGION=us-east-1
 
 ### Volumes (Data Persistence)
 ```yaml
-./backend/images → /app/images            # Uploaded images
-./backend/faisses_indexes → /app/faisses_indexes  # FAISS indexes
-./backend/backend.db → /app/backend.db    # SQLite database
+./backend/images → /app/images                        # Uploaded images
+./backend/faisses_indexes → /app/faisses_indexes      # FAISS indexes
+./backend/database.sqlite → /app/database.sqlite      # SQLite database
 ```
 
 ### Network
@@ -290,8 +308,9 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 **Tal Alter**
 - GitHub: [@talalter](https://github.com/talalter)
-- LinkedIn: [Add your LinkedIn URL here]
-- Project Repository: [image-search-app](https://github.com/talalter/image-search-app)
+- LinkedIn: [linkedin.com/in/tal-alter](https://linkedin.com/in/tal-alter) <!-- Update with your actual LinkedIn URL -->
+- Portfolio: [Add your portfolio website here]
+- Email: tal.alter@example.com <!-- Update with your actual email -->
 
 ---
 

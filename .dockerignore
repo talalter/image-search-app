@@ -1,0 +1,49 @@
+# Don't copy these into Docker build context
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Virtual environment
+talenv/
+venv/
+env/
+ENV/
+
+# Runtime data (will be mounted as volumes instead)
+backend/images/
+backend/faisses_indexes/
+backend/database.sqlite
+backend/*.db
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Frontend build artifacts
+frontend/node_modules/
+frontend/build/
+frontend/.env.local
+
+# Docker
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# Documentation
+*.md
+LICENSE
+
+# OS
+.DS_Store
+Thumbs.db
