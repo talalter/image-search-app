@@ -13,3 +13,8 @@ __pycache__/
 .env/
 talenv/
 static/uploads/
+
+# Log files
+*.log
+logs/
+backend/logs/

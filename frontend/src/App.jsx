@@ -27,7 +27,7 @@ function App() {
         <div className="login-box">
           {showRegister ? (
             <>
-              <Register />
+              <Register onRegisterSuccess={setUser} />
               <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
                 Already have an account?{" "}
                 <button 

@@ -4,7 +4,7 @@ function LogOut({ onLogout }) {
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/users/logout', {
+      const response = await fetch('/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

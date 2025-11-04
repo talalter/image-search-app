@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
+import UniMageLogo from './UniMageLogo';
+import { loginUser, saveToken } from '../utils/api';
 
-function Register() {
+function Register({ onRegisterSuccess }) {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
@@ -12,12 +13,6 @@ function Register() {
     e.preventDefault();
     setMessage('');
     setError('');
-
-    // Validate passwords match
-    if (password !== confirmPassword) {
-      setError('Passwords do not match');
-      return;
-    }
 
     // Validate password length
     if (password.length < 6) {
@@ -40,10 +35,24 @@ function Register() {
         throw new Error(data.detail || 'Registration failed');
       }
 
-      setMessage(`Account created successfully! 🎉`);
-      setUsername('');
-      setPassword('');
-      setConfirmPassword('');
+      // Account created! Now automatically log them in
+      setMessage(`Account created! Logging you in...`);
+      
+      // Auto-login after successful registration
+      try {
+        const loginData = await loginUser(username, password);
+        saveToken(loginData.token);
+        
+        // Call parent callback to update user state
+        if (onRegisterSuccess) {
+          onRegisterSuccess(loginData);
+        }
+      } catch (loginErr) {
+        // Registration succeeded but auto-login failed
+        setMessage(`Account created! Please login manually.`);
+        setUsername('');
+        setPassword('');
+      }
     } catch (err) {
       setError(err.message);
     } finally {
@@ -53,6 +62,8 @@ function Register() {
 
   return (
     <div>
+      <UniMageLogo size={80} />
+      
       <h2 style={{ 
         textAlign: 'center', 
         marginBottom: '8px',
@@ -101,7 +112,7 @@ function Register() {
           />
         </div>
 
-        <div style={{ marginBottom: '20px' }}>
+        <div style={{ marginBottom: '24px' }}>
           <label style={{ 
             display: 'block', 
             marginBottom: '8px', 
@@ -116,36 +127,6 @@ function Register() {
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="Create a password (min 6 characters)"
-            required
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #e1e8ed',
-              borderRadius: '10px',
-              fontSize: '16px',
-              transition: 'border-color 0.2s',
-              boxSizing: 'border-box'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-            onBlur={(e) => e.target.style.borderColor = '#e1e8ed'}
-          />
-        </div>
-
-        <div style={{ marginBottom: '24px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            color: '#475569',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
-            Confirm Password
-          </label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Confirm your password"
             required
             style={{
               width: '100%',

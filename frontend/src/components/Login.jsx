@@ -1,6 +1,7 @@
 import React from 'react';
 import { useState } from 'react';
 import { loginUser, saveToken, APIError, HTTP_STATUS } from '../utils/api';
+import UniMageLogo from './UniMageLogo';
 
 /**
  * Login Component
@@ -85,6 +86,8 @@ function Login({ onLogin }) {
 
   return (
     <div>
+      <UniMageLogo size={80} />
+      
       <h2 style={{ 
         textAlign: 'center', 
         marginBottom: '8px',
