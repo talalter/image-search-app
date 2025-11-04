@@ -1,5 +1,5 @@
-from fastapi import APIRouter, HTTPException, Body
-from pydantic import BaseModel
+from fastapi import APIRouter, HTTPException, Body  # type: ignore
+from pydantic import BaseModel # type: ignore
 from typing import List
 from database import (
     share_folder_with_user,

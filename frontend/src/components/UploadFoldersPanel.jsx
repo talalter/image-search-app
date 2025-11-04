@@ -57,7 +57,6 @@ function UploadFolderPanel({
   
           {(mode === "expand_existing" || mode === "delete_folder") && (
             <GetFolders
-              key={refreshKey}
               selectedFolderIds={selectedFolderIds}
               setSelectedFolderIds={setSelectedFolderIds}
               mode={mode}

@@ -61,8 +61,7 @@ Frontend (React + Nginx) ←→ Backend (FastAPI) ←→ CLIP Model
 
 ### Database Schema
 
-```mermaid
-erDiagram
+```
     users ||--o{ folders : owns
     users ||--o{ images : owns
     users ||--o{ sessions : has
