@@ -1,9 +1,13 @@
 # database.py
 import sqlite3
+import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 
-DB_NAME = "database.sqlite"
+# Use data directory for Docker volume, fallback to current dir for local dev
+DB_DIR = os.getenv("DB_DIR", ".")
+os.makedirs(DB_DIR, exist_ok=True)
+DB_NAME = os.path.join(DB_DIR, "database.sqlite")
 
 def get_conn():
     conn = sqlite3.connect(DB_NAME)
