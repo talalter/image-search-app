@@ -7,14 +7,14 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688.svg)](https://fastapi.tiangolo.com/)
 [![Docker](https://img.shields.io/badge/Docker-Ready-2496ed.svg)](https://www.docker.com/)
 
-## � Key Highlights
+## Key Highlights
 
-- 🤖 **AI-Powered Search**: Uses OpenAI's CLIP model for semantic understanding ("sunset beach" finds beach sunset photos)
-- ⚡ **Efficient Vector Search**: FAISS similarity search on 512-dimensional embeddings
-- 🐳 **Production-Ready**: Fully containerized with Docker, ready to deploy
-- 🔐 **Enterprise Security**: PBKDF2 password hashing (390K iterations), session-based auth
-- 👥 **Multi-User Platform**: Complete user isolation with folder sharing capabilities
-- 📦 **Full-Stack Modern**: React frontend, FastAPI backend, SQLite database
+- **AI-Powered Search**: Uses OpenAI's CLIP model for semantic understanding
+- **Efficient Vector Search**: FAISS similarity search on 512-dimensional embeddings
+- **Production-Ready**: Fully containerized with Docker, ready to deploy
+- **Enterprise Security**: PBKDF2 password hashing, csession-based auth
+- **Multi-User Platform**: Complete user isolation with folder sharing capabilities
+- **Full-Stack Modern**: React frontend, FastAPI backend, SQLite database
 
 ## 📸 Screenshots
 
@@ -32,15 +32,15 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 
 > **Note**: Add actual screenshots to `docs/screenshots/` folder before uploading to GitHub
 
-## 🌟 Features
+## Features
 
 ### Core Functionality
-- **🔐 User Authentication**: Secure registration, login, and session management
-- **📁 Folder Management**: Create, organize, and delete image folders
-- **📤 Image Upload**: Bulk upload images with automatic CLIP embedding generation
-- **🔎 Semantic Search**: Natural language queries using CLIP + FAISS cosine similarity
-- **👥 Folder Sharing**: Share folders with other users (view/edit permissions)
-- **🌐 Multi-user Isolation**: Each user has isolated storage and indexes
+- **User Authentication**: Secure registration, login, and session management
+- **Folder Management**: Create, organize, and delete image folders
+- **Image Upload**: Bulk upload images with automatic CLIP embedding generation
+- **Semantic Search**: Natural language queries using CLIP + FAISS cosine similarity
+- **Folder Sharing**: Share folders with other users (view/edit permissions)
+- **Multi-user Isolation**: Each user has isolated storage and indexes
 
 ### Technical Features
 - **Vector Search**: FAISS IndexFlatIP for efficient similarity search
@@ -48,7 +48,7 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 - **Storage Options**: Local filesystem or AWS S3 (configurable)
 - **Persistent Data**: SQLite database for metadata, file volumes for images/indexes
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 Frontend (React + Nginx) ←→ Backend (FastAPI) ←→ CLIP Model
@@ -167,7 +167,7 @@ sequenceDiagram
 - **Auto-Cleanup**: Expired sessions deleted before each validation check
 - **Generic Errors**: "Invalid username or password" prevents username enumeration
 
-## 🚀 Quick Start with Docker
+## Quick Start with Docker
 
 ### Prerequisites
 - Docker & Docker Compose installed ([Get Docker](https://docs.docker.com/get-docker/))
@@ -206,7 +206,7 @@ docker-compose logs -f backend
 docker-compose logs -f frontend
 ```
 
-## 🛠️ Local Development Setup
+## Local Development Setup
 
 ### Backend Setup
 ```bash
@@ -229,16 +229,16 @@ npm install
 npm start  # Runs on port 3000, proxies API to :9999
 ```
 
-## 📖 Usage Guide
+## Usage Guide
 
-> **💡 First Time Setup**: The app starts with an empty database. Simply register a new account to begin!
+> **First Time Setup**: The app starts with an empty database. Simply register a new account to begin!
 
 ### 1. Register & Login
 - Create an account with username/password (e.g., `demo` / `demo123`)
 - Login to receive authentication token (stored in localStorage)
 
 ### 2. Create Folders
-- Click "📁 Manage Folders" → "➕ Create Folder"
+- Click "Manage Folders" → "Create Folder"
 - Enter folder name (e.g., "Vacation Photos", "Work Documents")
 
 ### 3. Upload Images
@@ -252,11 +252,11 @@ npm start  # Runs on port 3000, proxies API to :9999
 - View top matching images with similarity scores
 
 ### 5. Share Folders
-- Click "📤 Share Folder"
+- Click "Share Folder"
 - Enter username and permission level (view/edit)
 - Shared users can search (and upload if edit permission)
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 image-search-app/
@@ -291,7 +291,7 @@ image-search-app/
 └── docker-compose.yml          # Multi-container orchestration
 ```
 
-## 🔧 Configuration
+## Configuration
 
 ### Environment Variables (Backend)
 
@@ -313,7 +313,7 @@ AWS_REGION=us-east-1
 **folder_shares**: id, folder_id, owner_id, shared_with_user_id, permission  
 **sessions**: token, user_id, expires_at, last_seen
 
-## 🐳 Docker Details
+## Docker Details
 
 ### Image Sizes
 - Backend: ~1.8GB (includes Python + CLIP model + FAISS)
@@ -323,8 +323,10 @@ AWS_REGION=us-east-1
 ```yaml
 ./backend/images → /app/images                        # Uploaded images
 ./backend/faisses_indexes → /app/faisses_indexes      # FAISS indexes
-./backend/database.sqlite → /app/database.sqlite      # SQLite database
+backend-db (named volume) → /app/data                 # SQLite database
 ```
+
+**Note**: The database uses a named volume instead of a bind mount to avoid file creation issues in Docker.
 
 ### Network
 - Containers communicate via `app-network` bridge
@@ -332,7 +334,7 @@ AWS_REGION=us-east-1
 - Only ports 3000 and 9999 exposed to host
 
 
-## 🔒 Security
+## Security
 
 - **Passwords**: PBKDF2-HMAC-SHA256 with 390K iterations
 - **Sessions**: 32-byte random tokens with 12-hour TTL
@@ -340,7 +342,7 @@ AWS_REGION=us-east-1
 - **Input Validation**: Pydantic models on all endpoints
 - **CORS**: Configured for same-origin policy
 
-## 📝 API Endpoints
+## API Endpoints
 
 ### Authentication
 - `POST /register` - Create new user
@@ -364,18 +366,18 @@ AWS_REGION=us-east-1
 
 Full API documentation: http://localhost:9999/docs
 
-## 🤝 Contributing
+## Contributing
 
 This is a portfolio project, but suggestions are welcome! Feel free to:
 - Report bugs via GitHub Issues
 - Suggest features
 - Submit pull requests
 
-## 📄 License
+## License
 
 MIT License - see [LICENSE](LICENSE) file for details
 
-## 👤 Author
+## Author
 
 **Tal Alter**
 - GitHub: [@talalter](https://github.com/talalter)
@@ -385,9 +387,9 @@ MIT License - see [LICENSE](LICENSE) file for details
 
 ---
 
-**⭐ If you found this project interesting, please consider giving it a star!**
+**If you found this project interesting, please consider giving it a star!**
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - **OpenAI CLIP** - Image embedding model
 - **FAISS** - Facebook AI Similarity Search

@@ -14,11 +14,12 @@ services:
       - ./backend/images:/app/images
       # Persist FAISS indexes
       - ./backend/faisses_indexes:/app/faisses_indexes
-      # Persist SQLite database
-      - ./backend/database.sqlite:/app/database.sqlite
+      # Persist SQLite database in a data directory
+      - backend-db:/app/data
     environment:
       - STORAGE_BACKEND=local
       - PYTHONUNBUFFERED=1
+      - DB_DIR=/app/data
     networks:
       - image-search-network
     restart: unless-stopped
@@ -54,6 +55,5 @@ networks:
     driver: bridge
 
 volumes:
-  # Named volumes for persistence (optional alternative to bind mounts)
-  backend-data:
-  faiss-indexes:
+  # Named volume for SQLite database persistence
+  backend-db:
