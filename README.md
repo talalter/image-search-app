@@ -43,50 +43,158 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
             └─────────────┘ └─────────────┘ └─────────────┘
 ```
 
-### Image Upload & Processing Pipeline
 
-```mermaid
-sequenceDiagram
-    participant User
-    participant Frontend
-    participant FastAPI
-    participant Storage as AWS S3 / Local
-    participant Database as SQLite
-    participant CLIP as CLIP Model
-    participant FAISS as FAISS Index
-    participant BG as Background Worker
+## Quick Start with Docker
 
-    Note over User,BG: Upload Flow
-    User->>Frontend: Select images & folder
-    Frontend->>FastAPI: POST /upload-images (multipart/form-data)
-    
-    Note over FastAPI: Fast Path - Immediate Response
-    FastAPI->>Storage: Save images to S3/Local
-    FastAPI->>Database: Insert image records
-    FastAPI->>BG: Queue background processing
-    FastAPI-->>Frontend: 200 OK (immediate response)
-    Frontend-->>User: "Upload successful, processing..."
-    
-    Note over BG,FAISS: Background Processing (Async)
-    BG->>Storage: Load saved images
-    BG->>CLIP: Generate 512-dim embeddings
-    CLIP-->>BG: Vector embeddings
-    BG->>FAISS: Add vectors to user's folder index
-    FAISS-->>BG: Index updated
-    BG->>Database: Mark processing complete
-    
-    Note over User,BG: Search Flow
-    User->>Frontend: Enter search query
-    Frontend->>FastAPI: GET /search-images
-    FastAPI->>CLIP: Embed query text
-    CLIP-->>FastAPI: Query vector
-    FastAPI->>FAISS: Similarity search (cosine)
-    FAISS-->>FastAPI: Top-K matches with scores
-    FastAPI->>Database: Get image metadata
-    FastAPI->>Storage: Generate presigned URLs (S3)
-    FastAPI-->>Frontend: Results with image URLs
-    Frontend-->>User: Display matches with similarity %
+### Prerequisites
+- Docker & Docker Compose installed ([Get Docker](https://docs.docker.com/get-docker/))
+- 4GB+ RAM available (CLIP model requires ~2GB)
+
+### Run the Application
+
+```bash
+# Clone the repository
+git clone https://github.com/talalter/image-search-app.git
+cd image-search-app
+
+# Build and start containers (first time takes ~5 minutes)
+docker-compose up --build
+
+# Access the application
+# Frontend: http://localhost:3000
+# Backend API: http://localhost:9999
+# API Docs: http://localhost:9999/docs
 ```
+
+**That's it!** The app will:
+1. Build frontend and backend images (~5 minutes first time)
+2. Start both services with networking configured
+3. Create persistent volumes for data
+4. Be accessible at http://localhost:3000
+
+### Stop the Application
+```bash
+docker-compose down
+```
+
+### View Logs
+```bash
+docker-compose logs -f backend
+docker-compose logs -f frontend
+```
+
+## Local Development Setup
+
+### Backend Setup
+```bash
+# Create virtual environment
+python3 -m venv talenv
+source talenv/bin/activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run backend
+cd backend
+uvicorn api:app --reload --port 9999
+```
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm start  # Runs on port 3000, proxies API to :9999
+```
+
+## Usage Guide
+
+> **First Time Setup**: The app starts with an empty database. Simply register a new account to begin!
+
+### 1. Register & Login
+- Create an account with username/password (e.g., `demo` / `demo123`)
+- Login to receive authentication token (stored in localStorage)
+
+### 2. Create Folders
+- Click "Manage Folders" → "Create Folder"
+- Enter folder name (e.g., "Vacation Photos", "Work Documents")
+
+### 3. Upload Images
+- Select a folder from the upload panel
+- Choose multiple images (JPG, PNG)
+- Images are automatically embedded using CLIP
+
+### 4. Search Images
+- Enter natural language query (e.g., "sunset over mountains", "red car")
+- Optionally select specific folders to search
+- View top matching images with similarity scores
+
+### 5. Share Folders
+- Click "Share Folder"
+- Enter username and permission level (view/edit)
+- Shared users can search (and upload if edit permission)
+
+## Project Structure
+
+```
+image-search-app/
+├── backend/
+│   ├── api.py                  # FastAPI app entry point
+│   ├── database.py             # SQLite operations
+│   ├── faiss_handler.py        # FAISS index management
+│   ├── utils.py                # CLIP embedding generation
+│   ├── security.py             # Password hashing
+│   ├── routes/
+│   │   ├── user_routes.py      # Register/login/logout
+│   │   ├── images_routes.py    # Upload/search/folders
+│   │   └── sharing_routes.py   # Folder sharing
+│   ├── images/                 # Uploaded images (volume)
+│   ├── faisses_indexes/        # FAISS indexes (volume)
+│   ├── database.sqlite         # SQLite database (volume)
+│   └── Dockerfile
+│
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx             # Main component
+│   │   └── components/
+│   │       ├── Login.jsx
+│   │       ├── SearchImages.jsx
+│   │       ├── UploadImages.jsx
+│   │       ├── GetFolders.jsx
+│   │       ├── ShareFolder.jsx
+│   │       └── SharedWithMe.jsx
+│   ├── nginx.conf              # Production web server config
+│   └── Dockerfile
+│
+└── docker-compose.yml          # Multi-container orchestration
+```
+
+## Configuration
+
+### Environment Variables (Backend)
+
+```bash
+STORAGE_BACKEND=local  # Options: 'local' or 'aws'
+
+# For AWS S3 storage (optional)
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+AWS_BUCKET_NAME=your_bucket
+AWS_REGION=us-east-1
+```
+
+## Docker Details
+
+### Image Sizes
+- Backend: ~1.8GB (includes Python + CLIP model + FAISS)
+- Frontend: ~25MB (multi-stage build with Nginx)
+
+### Volumes (Data Persistence)
+```yaml
+./backend/images → /app/images                        # Uploaded images
+./backend/faisses_indexes → /app/faisses_indexes      # FAISS indexes
+backend-db (named volume) → /app/data                 # SQLite database
+```
+
 
 ### AWS S3 Integration Details
 
@@ -230,180 +338,6 @@ sequenceDiagram
     Frontend->>Frontend: Clear localStorage
     Frontend->>Frontend: Redirect to login
 ```
-
-**Security Features:**
-- **Password Hashing**: PBKDF2-HMAC-SHA256 with 390,000 iterations (OWASP recommended)
-- **Session Tokens**: 32-byte URL-safe random strings (`secrets.token_urlsafe(32)`)
-- **Auto-Refresh**: Session expiry extended on each valid request (sliding window)
-- **Auto-Cleanup**: Expired sessions deleted before each validation check
-- **Generic Errors**: "Invalid username or password" prevents username enumeration
-
-## Quick Start with Docker
-
-### Prerequisites
-- Docker & Docker Compose installed ([Get Docker](https://docs.docker.com/get-docker/))
-- 4GB+ RAM available (CLIP model requires ~2GB)
-
-### Run the Application
-
-```bash
-# Clone the repository
-git clone https://github.com/talalter/image-search-app.git
-cd image-search-app
-
-# Build and start containers (first time takes ~5 minutes)
-docker-compose up --build
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:9999
-# API Docs: http://localhost:9999/docs
-```
-
-**That's it!** The app will:
-1. Build frontend and backend images (~5 minutes first time)
-2. Start both services with networking configured
-3. Create persistent volumes for data
-4. Be accessible at http://localhost:3000
-
-### Stop the Application
-```bash
-docker-compose down
-```
-
-### View Logs
-```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
-```
-
-## Local Development Setup
-
-### Backend Setup
-```bash
-# Create virtual environment
-python3 -m venv talenv
-source talenv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run backend
-cd backend
-uvicorn api:app --reload --port 9999
-```
-
-### Frontend Setup
-```bash
-cd frontend
-npm install
-npm start  # Runs on port 3000, proxies API to :9999
-```
-
-## Usage Guide
-
-> **First Time Setup**: The app starts with an empty database. Simply register a new account to begin!
-
-### 1. Register & Login
-- Create an account with username/password (e.g., `demo` / `demo123`)
-- Login to receive authentication token (stored in localStorage)
-
-### 2. Create Folders
-- Click "Manage Folders" → "Create Folder"
-- Enter folder name (e.g., "Vacation Photos", "Work Documents")
-
-### 3. Upload Images
-- Select a folder from the upload panel
-- Choose multiple images (JPG, PNG)
-- Images are automatically embedded using CLIP
-
-### 4. Search Images
-- Enter natural language query (e.g., "sunset over mountains", "red car")
-- Optionally select specific folders to search
-- View top matching images with similarity scores
-
-### 5. Share Folders
-- Click "Share Folder"
-- Enter username and permission level (view/edit)
-- Shared users can search (and upload if edit permission)
-
-## Project Structure
-
-```
-image-search-app/
-├── backend/
-│   ├── api.py                  # FastAPI app entry point
-│   ├── database.py             # SQLite operations
-│   ├── faiss_handler.py        # FAISS index management
-│   ├── utils.py                # CLIP embedding generation
-│   ├── security.py             # Password hashing
-│   ├── routes/
-│   │   ├── user_routes.py      # Register/login/logout
-│   │   ├── images_routes.py    # Upload/search/folders
-│   │   └── sharing_routes.py   # Folder sharing
-│   ├── images/                 # Uploaded images (volume)
-│   ├── faisses_indexes/        # FAISS indexes (volume)
-│   ├── database.sqlite         # SQLite database (volume)
-│   └── Dockerfile
-│
-├── frontend/
-│   ├── src/
-│   │   ├── App.jsx             # Main component
-│   │   └── components/
-│   │       ├── Login.jsx
-│   │       ├── SearchImages.jsx
-│   │       ├── UploadImages.jsx
-│   │       ├── GetFolders.jsx
-│   │       ├── ShareFolder.jsx
-│   │       └── SharedWithMe.jsx
-│   ├── nginx.conf              # Production web server config
-│   └── Dockerfile
-│
-└── docker-compose.yml          # Multi-container orchestration
-```
-
-## Configuration
-
-### Environment Variables (Backend)
-
-```bash
-STORAGE_BACKEND=local  # Options: 'local' or 'aws'
-
-# For AWS S3 storage (optional)
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_BUCKET_NAME=your_bucket
-AWS_REGION=us-east-1
-```
-
-### Database Schema
-
-**users**: id, username, password_hash, created_at  
-**folders**: id, user_id, folder_name  
-**images**: id, user_id, folder_id, filepath  
-**folder_shares**: id, folder_id, owner_id, shared_with_user_id, permission  
-**sessions**: token, user_id, expires_at, last_seen
-
-## Docker Details
-
-### Image Sizes
-- Backend: ~1.8GB (includes Python + CLIP model + FAISS)
-- Frontend: ~25MB (multi-stage build with Nginx)
-
-### Volumes (Data Persistence)
-```yaml
-./backend/images → /app/images                        # Uploaded images
-./backend/faisses_indexes → /app/faisses_indexes      # FAISS indexes
-backend-db (named volume) → /app/data                 # SQLite database
-```
-
-**Note**: The database uses a named volume instead of a bind mount to avoid file creation issues in Docker.
-
-### Network
-- Containers communicate via `app-network` bridge
-- Frontend proxies API requests to `backend:9999`
-- Only ports 3000 and 9999 exposed to host
-
 
 
 ## License
