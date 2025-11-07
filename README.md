@@ -9,54 +9,125 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 
 ## Key Highlights
 
-- **AI-Powered Search**: Uses OpenAI's CLIP model for semantic understanding
-- **Efficient Vector Search**: FAISS similarity search on 512-dimensional embeddings
-- **Production-Ready**: Fully containerized with Docker, ready to deploy
-- **Enterprise Security**: PBKDF2 password hashing, csession-based auth
-- **Multi-User Platform**: Complete user isolation with folder sharing capabilities
-- **Full-Stack Modern**: React frontend, FastAPI backend, SQLite database
-
-## 📸 Screenshots
-
-### Login & Registration
-![Login Page](docs/screenshots/login.png)
-
-### Upload Images
-![Upload Interface](docs/screenshots/upload.png)
-
-### Search Results
-![Search Results showing semantic matches](docs/screenshots/search.png)
-
-### Folder Management
-![Folder organization with sharing options](docs/screenshots/folders.png)
-
-> **Note**: Add actual screenshots to `docs/screenshots/` folder before uploading to GitHub
+- **AI-Powered Search**: OpenAI CLIP model generates 512-dimensional embeddings for semantic understanding
+- **Lightning-Fast Search**: FAISS IndexFlatIP performs cosine similarity search on millions of vectors
+- **Cloud-Ready Storage**: Seamlessly switch between local filesystem and AWS S3 with presigned URLs
+- **Production-Ready**: Docker + Nginx deployment with multi-stage builds and health checks
+- **Enterprise Security**: PBKDF2-HMAC-SHA256 (390k iterations) + session tokens with auto-refresh
+- **Multi-Tenant Platform**: Complete user isolation with granular folder sharing (view/edit permissions)
+- **Full-Stack Modern**: React SPA + FastAPI backend + SQLite with foreign key constraints
 
 ## Features
 
-### Core Functionality
-- **User Authentication**: Secure registration, login, and session management
-- **Folder Management**: Create, organize, and delete image folders
-- **Image Upload**: Bulk upload images with automatic CLIP embedding generation
-- **Semantic Search**: Natural language queries using CLIP + FAISS cosine similarity
-- **Folder Sharing**: Share folders with other users (view/edit permissions)
-- **Multi-user Isolation**: Each user has isolated storage and indexes
-
-### Technical Features
-- **Vector Search**: FAISS IndexFlatIP for efficient similarity search
-- **AI Embeddings**: OpenAI CLIP (ViT-B/32) model for image understanding
-- **Storage Options**: Local filesystem or AWS S3 (configurable)
-- **Persistent Data**: SQLite database for metadata, file volumes for images/indexes
+- **Bulk Image Upload**: Drag & drop multiple images with background CLIP processing
+- **Natural Language Search**: Query like "sunset over mountains" or "red sports car"  
+- **Folder Organization**: Create, manage, and share image collections
+- **Real-Time Collaboration**: Share folders with other users instantly
+- **Session Management**: Auto-expiring tokens with sliding window refresh
 
 ## Architecture
 
+### High-Level Overview
 ```
-Frontend (React + Nginx) ←→ Backend (FastAPI) ←→ CLIP Model
-                                    ↓
-                     ┌──────────────┼──────────────┐
-                     ↓              ↓              ↓
-                 SQLite         FAISS          Images
-              (users/folders)  (embeddings)  (storage)
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   React SPA     │◄──►│   FastAPI + Nginx│◄──►│   CLIP Model    │
+│   (Frontend)    │    │    (Backend)     │    │  (ViT-B/32)     │
+└─────────────────┘    └──────────┬───────┘    └─────────────────┘
+                                  │
+                    ┌─────────────┼─────────────┐
+                    ▼             ▼             ▼
+            ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+            │   SQLite    │ │    FAISS    │ │   Storage   │
+            │ (metadata)  │ │ (vectors)   │ │ (AWS S3 /   │
+            │             │ │             │ │  Local FS)  │
+            └─────────────┘ └─────────────┘ └─────────────┘
+```
+
+### Image Upload & Processing Pipeline
+
+```mermaid
+sequenceDiagram
+    participant User
+    participant Frontend
+    participant FastAPI
+    participant Storage as AWS S3 / Local
+    participant Database as SQLite
+    participant CLIP as CLIP Model
+    participant FAISS as FAISS Index
+    participant BG as Background Worker
+
+    Note over User,BG: Upload Flow
+    User->>Frontend: Select images & folder
+    Frontend->>FastAPI: POST /upload-images (multipart/form-data)
+    
+    Note over FastAPI: Fast Path - Immediate Response
+    FastAPI->>Storage: Save images to S3/Local
+    FastAPI->>Database: Insert image records
+    FastAPI->>BG: Queue background processing
+    FastAPI-->>Frontend: 200 OK (immediate response)
+    Frontend-->>User: "Upload successful, processing..."
+    
+    Note over BG,FAISS: Background Processing (Async)
+    BG->>Storage: Load saved images
+    BG->>CLIP: Generate 512-dim embeddings
+    CLIP-->>BG: Vector embeddings
+    BG->>FAISS: Add vectors to user's folder index
+    FAISS-->>BG: Index updated
+    BG->>Database: Mark processing complete
+    
+    Note over User,BG: Search Flow
+    User->>Frontend: Enter search query
+    Frontend->>FastAPI: GET /search-images
+    FastAPI->>CLIP: Embed query text
+    CLIP-->>FastAPI: Query vector
+    FastAPI->>FAISS: Similarity search (cosine)
+    FAISS-->>FastAPI: Top-K matches with scores
+    FastAPI->>Database: Get image metadata
+    FastAPI->>Storage: Generate presigned URLs (S3)
+    FastAPI-->>Frontend: Results with image URLs
+    Frontend-->>User: Display matches with similarity %
+```
+
+### AWS S3 Integration Details
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        AWS S3 Bucket                        │
+├─────────────────────────────────────────────────────────────┤
+│  Structure: images/{user_id}/{folder_id}/{filename}         │
+│                                                             │
+│  ├── images/1/3/dogs_200/dog_abc123.jpg                   │
+│  ├── images/1/3/dogs_200/dog_def456.jpg                   │
+│  ├── images/2/5/cats/cat_xyz789.jpg                       │
+│  └── ...                                                   │
+│                                                             │
+│  Features:                                                  │
+│  • Presigned URLs (60s expiry) for secure access          │
+│  • Automatic content-type detection                        │
+│  • Scalable storage for millions of images                 │
+│  • Cross-region replication ready                          │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### FAISS Index Structure
+
+```
+Per-User, Per-Folder Indexes:
+faisses_indexes/
+├── 1/                          # User ID 1
+│   ├── 3.faiss                 # Folder ID 3 index
+│   ├── 4.faiss                 # Folder ID 4 index
+│   └── ...
+├── 2/                          # User ID 2
+│   ├── 5.faiss                 # Folder ID 5 index
+│   └── ...
+└── ...
+
+Each .faiss file contains:
+• IndexFlatIP (Inner Product for normalized vectors)
+• 512-dimensional CLIP embeddings
+• Mapping: vector_position → image_id
+• Optimized for cosine similarity search
 ```
 
 ### Database Schema
@@ -334,44 +405,6 @@ backend-db (named volume) → /app/data                 # SQLite database
 - Only ports 3000 and 9999 exposed to host
 
 
-## Security
-
-- **Passwords**: PBKDF2-HMAC-SHA256 with 390K iterations
-- **Sessions**: 32-byte random tokens with 12-hour TTL
-- **Foreign Keys**: CASCADE deletes for data integrity
-- **Input Validation**: Pydantic models on all endpoints
-- **CORS**: Configured for same-origin policy
-
-## API Endpoints
-
-### Authentication
-- `POST /register` - Create new user
-- `POST /login` - Get auth token
-- `POST /logout` - Invalidate session
-
-### Folder Management
-- `POST /create-folder` - Create new folder
-- `POST /delete-folder` - Delete folder and contents
-- `GET /get-folders` - List owned + shared folders
-
-### Image Operations
-- `POST /upload-images` - Upload multiple images
-- `GET /search-images` - Semantic search query
-
-### Sharing
-- `POST /share-folder` - Share folder with user
-- `POST /revoke-folder-share` - Remove access
-- `GET /folders-shared-with-me` - List received shares
-- `GET /folders-shared-by-me` - List given shares
-
-Full API documentation: http://localhost:9999/docs
-
-## Contributing
-
-This is a portfolio project, but suggestions are welcome! Feel free to:
-- Report bugs via GitHub Issues
-- Suggest features
-- Submit pull requests
 
 ## License
 
@@ -382,8 +415,7 @@ MIT License - see [LICENSE](LICENSE) file for details
 **Tal Alter**
 - GitHub: [@talalter](https://github.com/talalter)
 - LinkedIn: [linkedin.com/in/tal-alter](https://linkedin.com/in/tal-alter) <!-- Update with your actual LinkedIn URL -->
-- Portfolio: [Add your portfolio website here]
-- Email: tal.alter@example.com <!-- Update with your actual email -->
+- Email: talalter95900@gmail.com 
 
 ---
 
