@@ -70,7 +70,7 @@ function Register({ onRegisterSuccess }) {
         color: '#2c3e50',
         fontSize: '28px'
       }}>
-        Create Account ✨
+        Create Account
       </h2>
       <p style={{ 
         textAlign: 'center', 

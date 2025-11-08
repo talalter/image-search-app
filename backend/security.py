@@ -21,7 +21,7 @@ def _b64encode(raw: bytes) -> str:
 def _b64decode(data: str) -> bytes:
     return base64.b64decode(data.encode("utf-8"))
 
-
+#TODO: Make it hidden
 def hash_password(password: str) -> str:
     """Hash a password using PBKDF2-HMAC-SHA256 with a random salt."""
     if not password:
