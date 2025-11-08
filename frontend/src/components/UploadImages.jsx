@@ -36,15 +36,37 @@ async function uploadImagesInBatches(files, folderName, onProgress) {
   return { uploaded_count: totalUploaded };
 }
 
-function UploadImages({mode, onUploadSuccess}) {
+function UploadImages({mode, onUploadSuccess, folderId}) {
   const [files, setFiles] = useState([]);
   const [folderName, setFolderName] = useState('');
   const [message, setMessage] = useState('');
   const [isDragging, setIsDragging] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState({ current: 0, total: 0 });
+  const [existingFolderName, setExistingFolderName] = useState('');
 
-
+  // Fetch folder name when folderId is provided (for adding to existing folder)
+  React.useEffect(() => {
+    if (folderId) {
+      const fetchFolderInfo = async () => {
+        try {
+          const token = localStorage.getItem('token');
+          const response = await fetch(`/get-folders?token=${token}`);
+          if (response.ok) {
+            const data = await response.json();
+            const folder = data.folders.find(f => f.id === parseInt(folderId));
+            if (folder) {
+              setExistingFolderName(folder.folder_name);
+              setFolderName(folder.folder_name); // Set this as the upload target
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching folder info:', error);
+        }
+      };
+      fetchFolderInfo();
+    }
+  }, [folderId]);
 
   const handleFileChange = (e) => {
     const selectedFiles = Array.from(e.target.files);
@@ -54,9 +76,11 @@ function UploadImages({mode, onUploadSuccess}) {
       return; // User cancelled or didn't select anything
     }
     
-    // Get folder name from first file's path
-    const firstPath = selectedFiles[0].webkitRelativePath.split('/')[0];
-    setFolderName(firstPath);
+    // Only set folder name from file path if we're not adding to existing folder
+    if (!folderId) {
+      const firstPath = selectedFiles[0].webkitRelativePath.split('/')[0];
+      setFolderName(firstPath);
+    }
     setFiles(selectedFiles);
   };
 
@@ -108,7 +132,10 @@ function UploadImages({mode, onUploadSuccess}) {
 
     if (filesList.length > 0) {
       setFiles(filesList);
-      setFolderName(folderPath || 'uploaded-folder');
+      // Only set folder name if we're not adding to existing folder
+      if (!folderId) {
+        setFolderName(folderPath || 'uploaded-folder');
+      }
     }
   };
 
@@ -212,7 +239,10 @@ function UploadImages({mode, onUploadSuccess}) {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
         }}>
-          {isDragging ? 'Drop folder here' : 'Drag & Drop Folder Here'}
+          {folderId 
+            ? (isDragging ? `Drop images for "${existingFolderName}"` : `Add Images to "${existingFolderName}"`)
+            : (isDragging ? 'Drop folder here' : 'Drag & Drop Folder Here')
+          }
         </h3>
         <p style={{ color: '#6b7280', marginBottom: '15px' }}>
           or
@@ -222,9 +252,10 @@ function UploadImages({mode, onUploadSuccess}) {
         <input
           type="file"
           id="folder-input"
-          webkitdirectory="true"
-          directory=""
+          webkitdirectory={folderId ? "" : "true"}
+          directory={folderId ? "" : ""}
           multiple
+          accept={folderId ? "image/*" : ""}
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
@@ -246,7 +277,7 @@ function UploadImages({mode, onUploadSuccess}) {
           onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
           onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
         >
-          📁 Browse for Folder
+          {folderId ? '📷 Browse for Images' : '📁 Browse for Folder'}
         </label>
       </div>
 

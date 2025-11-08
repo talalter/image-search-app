@@ -91,14 +91,14 @@ function Login({ onLogin }) {
       <h2 style={{ 
         textAlign: 'center', 
         marginBottom: '8px',
-        color: '#2c3e50',
+        color: '#07063aff',
         fontSize: '28px'
       }}>
-        Welcome Back! 👋
+        Welcome
       </h2>
       <p style={{ 
         textAlign: 'center', 
-        color: '#64748b', 
+        color: '#3c4d64ff', 
         marginBottom: '32px',
         fontSize: '14px'
       }}>

@@ -7,7 +7,7 @@ function UploadFolderPanel({
     selectedFolderIds, 
     setSelectedFolderIds 
   }) {
-    const [mode, setMode] = useState(null); // upload_new | expand_existing | delete_folder
+    const [mode, setMode] = useState(null); // upload_new | add_to_existing | delete_folder
     const [refreshKey, setRefreshKey] = useState(0); // Force refresh of GetFolders
 
     const deleteFolders = async (folderIds) => {
@@ -38,8 +38,8 @@ function UploadFolderPanel({
         Upload New Folder
         </button>
 
-        <button onClick={() => setMode(prev => prev === "expand_existing" ? null : "expand_existing")}>
-        Expand Existing Folder
+        <button onClick={() => setMode(prev => prev === "add_to_existing" ? null : "add_to_existing")}>
+        Add Images to Existing Folder
         </button>
 
         <button onClick={() => setMode(prev => prev === "delete_folder" ? null : "delete_folder")}>
@@ -55,7 +55,7 @@ function UploadFolderPanel({
             />
           )}
   
-          {(mode === "expand_existing" || mode === "delete_folder") && (
+          {(mode === "add_to_existing" || mode === "delete_folder") && (
             <GetFolders
               selectedFolderIds={selectedFolderIds}
               setSelectedFolderIds={setSelectedFolderIds}
@@ -64,7 +64,7 @@ function UploadFolderPanel({
             />
           )}
   
-          {mode === "expand_existing" && selectedFolderIds.length > 0 && (
+          {mode === "add_to_existing" && selectedFolderIds.length > 0 && (
             <UploadImages 
               folderId={selectedFolderIds[0]} 
               onUploadSuccess={() => setRefreshKey(prev => prev + 1)}

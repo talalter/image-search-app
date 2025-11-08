@@ -4,7 +4,7 @@ import Login from './components/Login.jsx';
 import Register from './components/Register.jsx';
 import SearchImage from './components/SearchImages.jsx';
 import GetFolders from './components/GetFolders.jsx';
-import UploadPanel from './components/UploadFoldersPanel.jsx';
+import UploadFolderPanel from './components/UploadFoldersPanel.jsx';
 import Modal from './components/Modal.jsx';
 import Card from './components/Card.jsx';
 import LogOut from './components/Logout.jsx';
@@ -20,7 +20,7 @@ function App() {
   const [showSharedWithMeModal, setShowSharedWithMeModal] = useState(false);
 
   const [selectedFolderIdsforSearch, setSelectedFolderIdsforSearch] = useState([]);
-  const [SelectedFolderIdsforUpload, setSelectedFolderIdsforUpload] = useState([]);
+  const [selectedFolderIdsforUpload, setSelectedFolderIdsforUpload] = useState([]);
   if (!user) {
     return (
       <div className="centered-container">
@@ -81,7 +81,7 @@ function App() {
     <div className="app-container">
       {/* Header with Manage Button and Logout */}
       <div className="dashboard-header">
-        <h2 className="welcome-text">Welcome, {user.username} 👋</h2>
+        <h2 className="welcome-text">Welcome, {user.username}</h2>
         <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
           <button className="manage-button" onClick={() => setShowManageModal(true)}>
             📁 Manage Folders
@@ -100,7 +100,10 @@ function App() {
           >
             📥 Shared With Me
           </button>
-          <LogOut onLogout={() => setUser(null)} />
+          <LogOut onLogout={() => {
+            setUser(null);
+            setShowRegister(false); // Reset to login page after logout
+          }} />
         </div>
       </div>
 
@@ -119,16 +122,18 @@ function App() {
       </div>
 
       {/* Manage Folders Modal */}
-      <Modal 
-        isOpen={showManageModal} 
-        onClose={() => setShowManageModal(false)}
-        title="Manage Folders"
-      >
-        <UploadPanel
-          selectedFolderIds={SelectedFolderIdsforUpload}
-          setSelectedFolderIds={setSelectedFolderIdsforUpload}
-        />
-      </Modal>
+      {showManageModal && (
+        <Modal 
+          isOpen={showManageModal} 
+          onClose={() => setShowManageModal(false)}
+          title="Manage Folders"
+        >
+          <UploadFolderPanel
+            selectedFolderIds={selectedFolderIdsforUpload}
+            setSelectedFolderIds={setSelectedFolderIdsforUpload}
+          />
+        </Modal>
+      )}
 
       {/* Share Folder Modal */}
       {showShareModal && (
