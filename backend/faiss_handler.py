@@ -53,8 +53,10 @@ class FaissManager:
     def search(self, user_id: int, query: str, folder_ids: list[int], k: int = 1):
         query_embedding = embed_text(query).astype('float32').reshape(1, -1)
         query_embedding = self._normalize(query_embedding)
-        
-        results = []
+
+        import heapq
+        # Use a min-heap to keep only top-k results efficiently
+        heap = []
 
         print(f"Searching FAISS for user {user_id}, query='{query}', folders={folder_ids}")
 
@@ -62,17 +64,23 @@ class FaissManager:
             index_path = self._get_folder_path(user_id, folder_id)
             if not os.path.exists(index_path):
                 raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
-            
+
             index = faiss.read_index(index_path)
             local_k = min(k, index.ntotal)
+            if local_k == 0:
+                continue
             distances, indices = index.search(query_embedding, local_k)
             for d, i in zip(distances[0], indices[0]):
-                results.append((float(d), int(i)))
+                # Use negative distance for max-heap behavior with heapq (which is a min-heap)
+                if len(heap) < k:
+                    heapq.heappush(heap, (d, int(i)))
+                else:
+                    heapq.heappushpop(heap, (d, int(i)))
 
-
-        results.sort(key=lambda x: x[0], reverse=True)
-        distances = [[res[0] for res in results][:k]]
-        indices = [[res[1] for res in results][:k]]
+        # Get top-k results sorted by similarity descending
+        top_results = heapq.nlargest(k, heap, key=lambda x: x[0])
+        distances = [[res[0] for res in top_results]]
+        indices = [[res[1] for res in top_results]]
         return distances, indices
 
     def search_with_ownership(self, query: str, folder_ids: list[int], folder_owner_map: dict[int, int], k: int = 1):
