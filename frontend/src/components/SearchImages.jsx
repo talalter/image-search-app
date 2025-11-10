@@ -1,5 +1,4 @@
-import React from 'react';
-import { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 
 
 async function searchImages(query, folderIds, top_k = 1) {
@@ -39,7 +38,8 @@ function SearchImage({ selectedFolderIds }) {
   const [results, setResults] = useState([]);
   const [error, setError] = useState('');
 
-  const handleSearch = async () => {
+  // ✅ Memoize handleSearch to prevent recreation on every render
+  const handleSearch = useCallback(async () => {
     setError('');
     try {
       const res = await searchImages(query, selectedFolderIds, topK);
@@ -48,7 +48,7 @@ function SearchImage({ selectedFolderIds }) {
       setError(err.message);
       setResults([]);
     }
-  };
+  }, [query, selectedFolderIds, topK]); // Recreate only when these dependencies change
 
   return (
     <div>

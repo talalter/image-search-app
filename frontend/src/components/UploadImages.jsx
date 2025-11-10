@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 
 // Upload files in batches for better performance
 async function uploadImagesInBatches(files, folderName, onProgress) {
@@ -68,7 +68,8 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     }
   }, [folderId]);
 
-  const handleFileChange = (e) => {
+  // ✅ Memoize file change handler
+  const handleFileChange = useCallback((e) => {
     const selectedFiles = Array.from(e.target.files);
     
     // Check if files were actually selected
@@ -82,27 +83,28 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
       setFolderName(firstPath);
     }
     setFiles(selectedFiles);
-  };
+  }, [folderId]);
 
-  const handleDragEnter = (e) => {
+  // ✅ Memoize drag handlers to prevent recreation
+  const handleDragEnter = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e) => {
+  const handleDragLeave = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
     // Only set to false if leaving the drop zone entirely
     if (e.currentTarget === e.target) {
       setIsDragging(false);
     }
-  };
+  }, []);
 
-  const handleDragOver = (e) => {
+  const handleDragOver = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
-  };
+  }, []);
 
   const handleDrop = async (e) => {
     e.preventDefault();
@@ -168,20 +170,25 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     }
   };
 
-  const handleUpload = async () => {
+  // ✅ Memoize progress update callback to prevent recreation
+  const updateProgress = useCallback((current, total) => {
+    setUploadProgress({ current, total });
+  }, []);
+
+  // ✅ Memoize upload handler
+  const handleUpload = useCallback(async () => {
     if (files.length === 0) {
       setMessage('Please select files to upload.');
       return;
     }
 
+    setIsUploading(true);
     
     try {
       const res = await uploadImagesInBatches(
         files, 
         folderName, 
-        (current, total) => {
-          setUploadProgress({ current, total });
-        }
+        updateProgress
       );
       setMessage(`✅ Successfully uploaded ${res.uploaded_count} images.`);
       setFiles([]);
@@ -208,7 +215,11 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     } finally {
       setIsUploading(false);
     }
-  };
+  }, [files, folderName, updateProgress, onUploadSuccess]);
+
+  // ✅ Memoize computed values
+  const hasFiles = useMemo(() => files.length > 0, [files.length]);
+  const isAddingToExisting = useMemo(() => Boolean(folderId), [folderId]);
 
   return (
     <div>
@@ -239,7 +250,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
           WebkitTextFillColor: 'transparent',
           backgroundClip: 'text'
         }}>
-          {folderId 
+          {isAddingToExisting 
             ? (isDragging ? `Drop images for "${existingFolderName}"` : `Add Images to "${existingFolderName}"`)
             : (isDragging ? 'Drop folder here' : 'Drag & Drop Folder Here')
           }
@@ -252,10 +263,10 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
         <input
           type="file"
           id="folder-input"
-          webkitdirectory={folderId ? "" : "true"}
-          directory={folderId ? "" : ""}
+          webkitdirectory={isAddingToExisting ? "" : "true"}
+          directory={isAddingToExisting ? "" : ""}
           multiple
-          accept={folderId ? "image/*" : ""}
+          accept={isAddingToExisting ? "image/*" : ""}
           onChange={handleFileChange}
           style={{ display: 'none' }}
         />
@@ -277,12 +288,12 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
           onMouseOver={(e) => e.target.style.transform = 'scale(1.05)'}
           onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
         >
-          {folderId ? '📷 Browse for Images' : '📁 Browse for Folder'}
+          {isAddingToExisting ? '📷 Browse for Images' : '📁 Browse for Folder'}
         </label>
       </div>
 
       {/* Selected files info */}
-      {files.length > 0 && (
+      {hasFiles && (
         <div style={{
           background: 'linear-gradient(135deg, #ede9fe 0%, #fce7f3 100%)',
           padding: '15px',
@@ -300,7 +311,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
       )}
 
       {/* Upload button */}
-      {files.length > 0 && (
+      {hasFiles && (
         <button 
           onClick={handleUpload}
           disabled={isUploading}

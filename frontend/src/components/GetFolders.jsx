@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 
 
 async function getFolders() {
@@ -22,7 +22,8 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
   const [error, setError] = useState('');
   const [showFolders, setShowFolders] = useState(false);
 
-  const fetchFolders = async () => {
+  // ✅ Memoize fetchFolders to prevent recreation on every render
+  const fetchFolders = useCallback(async () => {
     if (showFolders) {
       setShowFolders(false);
       return;
@@ -36,7 +37,7 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
       setError(err.message);
       setFolders([]);
     }
-  };
+  }, [showFolders]); // Only recreate when showFolders changes
 
   // Auto-fetch folders when component mounts OR when refreshTrigger changes
   useEffect(() => {
@@ -58,7 +59,8 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
     autoFetch();
   }, [onFoldersUpdate, refreshTrigger]); // Re-run when refreshTrigger changes
 
-  const handleClick = (folderId) => {
+  // ✅ Memoize handleClick to prevent child re-renders
+  const handleClick = useCallback((folderId) => {
     setSelectedFolderIds(prev => {
       if (prev.includes(folderId)) {
         return prev.filter(id => id !== folderId);
@@ -66,7 +68,10 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
         return [...prev, folderId];
       }
     });
-  };
+  }, [setSelectedFolderIds]); // setSelectedFolderIds is stable from useState
+
+  // ✅ Memoize computed values for performance
+  const selectedCount = useMemo(() => selectedFolderIds.length, [selectedFolderIds]);
 
   return (
     <div style={{ width: '100%' }}>
@@ -77,7 +82,7 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
         marginBottom: '16px'
       }}>
         <h3 style={{ margin: 0, color: '#2c3e50' }}>
-          📁 Select Folders to Search {selectedFolderIds.length > 0 && `(${selectedFolderIds.length} selected)`}
+          📁 Select Folders to Search {selectedCount > 0 && `(${selectedCount} selected)`}
         </h3>
         <button 
           onClick={fetchFolders}

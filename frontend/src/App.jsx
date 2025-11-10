@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import './App.css';
 import Login from './components/Login.jsx';
 import Register from './components/Register.jsx';
@@ -7,7 +7,7 @@ import GetFolders from './components/GetFolders.jsx';
 import UploadFolderPanel from './components/UploadFoldersPanel.jsx';
 import Modal from './components/Modal.jsx';
 import Card from './components/Card.jsx';
-import LogOut from './components/Logout.jsx';
+import HeaderButtons from './components/HeaderButtons.jsx';
 import ShareFolder from './components/ShareFolder.jsx';
 import SharedWithMe from './components/SharedWithMe.jsx';
 
@@ -21,6 +21,24 @@ function App() {
 
   const [selectedFolderIdsforSearch, setSelectedFolderIdsforSearch] = useState([]);
   const [selectedFolderIdsforUpload, setSelectedFolderIdsforUpload] = useState([]);
+  
+  // Memoized event handlers for better performance
+  const handleManage = useCallback(() => setShowManageModal(true), []);
+  const handleShare = useCallback(() => setShowShareModal(true), []);
+  const handleSharedWithMe = useCallback(() => setShowSharedWithMeModal(true), []);
+  const handleLogout = useCallback(() => {
+    setUser(null);
+    setShowRegister(false);
+  }, []);
+
+  // Event handlers object with memoized functions
+  const handlers = {
+    onManage: handleManage,
+    onShare: handleShare,
+    onSharedWithMe: handleSharedWithMe,
+    onLogout: handleLogout
+  };
+
   if (!user) {
     return (
       <div className="centered-container">
@@ -79,32 +97,12 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Header with Manage Button and Logout */}
+      {/* Header */}
       <div className="dashboard-header">
-        <h2 className="welcome-text">Welcome, {user.username}</h2>
-        <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-          <button className="manage-button" onClick={() => setShowManageModal(true)}>
-            📁 Manage Folders
-          </button>
-          <button 
-            className="manage-button" 
-            onClick={() => setShowShareModal(true)}
-            style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}
-          >
-            📤 Share Folder
-          </button>
-          <button 
-            className="manage-button" 
-            onClick={() => setShowSharedWithMeModal(true)}
-            style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}
-          >
-            📥 Shared With Me
-          </button>
-          <LogOut onLogout={() => {
-            setUser(null);
-            setShowRegister(false); // Reset to login page after logout
-          }} />
-        </div>
+        <HeaderButtons
+          username={user.username}
+          {...handlers}
+        />
       </div>
 
       {/* Main Content - Search Card */}
