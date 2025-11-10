@@ -50,56 +50,18 @@ class FaissManager:
         faiss.write_index(index, index_path)    
 
 
-    def search(self, user_id: int, query: str, folder_ids: list[int], k: int = 1):
-        query_embedding = embed_text(query).astype('float32').reshape(1, -1)
-        query_embedding = self._normalize(query_embedding)
 
-        import heapq
-        # Use a min-heap to keep only top-k results efficiently
-        heap = []
-
-        print(f"Searching FAISS for user {user_id}, query='{query}', folders={folder_ids}")
-
-        for folder_id in folder_ids:
-            index_path = self._get_folder_path(user_id, folder_id)
-            if not os.path.exists(index_path):
-                raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
-
-            index = faiss.read_index(index_path)
-            local_k = min(k, index.ntotal)
-            if local_k == 0:
-                continue
-            distances, indices = index.search(query_embedding, local_k)
-            for d, i in zip(distances[0], indices[0]):
-                # Use negative distance for max-heap behavior with heapq (which is a min-heap)
-                if len(heap) < k:
-                    heapq.heappush(heap, (d, int(i)))
-                else:
-                    heapq.heappushpop(heap, (d, int(i)))
-
-        # Get top-k results sorted by similarity descending
-        top_results = heapq.nlargest(k, heap, key=lambda x: x[0])
-        distances = [[res[0] for res in top_results]]
-        indices = [[res[1] for res in top_results]]
-        return distances, indices
 
     def search_with_ownership(self, query: str, folder_ids: list[int], folder_owner_map: dict[int, int], k: int = 1):
         """
         Search across multiple folders where each folder may be owned by different users.
-        
-        Args:
-            query: Search query text
-            folder_ids: List of folder IDs to search
-            folder_owner_map: Dict mapping folder_id to owner_user_id (for correct FAISS index path)
-            k: Number of top results to return
-            
-        Returns:
-            Tuple of (distances, indices) lists
+        Uses a heap to efficiently keep only the top-k results.
         """
         query_embedding = embed_text(query).astype('float32').reshape(1, -1)
         query_embedding = self._normalize(query_embedding)
-        
-        results = []
+
+        import heapq
+        heap = []
 
         print(f"Searching FAISS with ownership mapping, query='{query}', folders={folder_ids}")
         print(f"Folder ownership map: {folder_owner_map}")
@@ -109,21 +71,26 @@ class FaissManager:
             if owner_user_id is None:
                 print(f"Warning: No owner found for folder {folder_id}, skipping")
                 continue
-                
+
             index_path = self._get_folder_path(owner_user_id, folder_id)
             if not os.path.exists(index_path):
                 print(f"Warning: FAISS index not found at {index_path}, skipping folder {folder_id}")
                 continue
-            
+
             index = faiss.read_index(index_path)
             local_k = min(k, index.ntotal)
+            if local_k == 0:
+                continue
             distances, indices = index.search(query_embedding, local_k)
             for d, i in zip(distances[0], indices[0]):
-                results.append((float(d), int(i)))
+                if len(heap) < k:
+                    heapq.heappush(heap, (d, int(i)))
+                else:
+                    heapq.heappushpop(heap, (d, int(i)))
 
-        results.sort(key=lambda x: x[0], reverse=True)
-        distances = [[res[0] for res in results][:k]]
-        indices = [[res[1] for res in results][:k]]
+        top_results = heapq.nlargest(k, heap, key=lambda x: x[0])
+        distances = [[res[0] for res in top_results]]
+        indices = [[res[1] for res in top_results]]
         return distances, indices
 
 
