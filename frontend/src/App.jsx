@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import './App.css';
 import Login from './components/Login.jsx';
+import authStyles from './styles/AppAuth.module.css';
 import Register from './components/Register.jsx';
 import SearchImage from './components/SearchImages.jsx';
 import GetFolders from './components/GetFolders.jsx';
@@ -14,13 +15,14 @@ import SharedWithMe from './components/SharedWithMe.jsx';
 
 function App() {
   const [user, setUser] = useState(null);
-  const [showRegister, setShowRegister] = useState(false); 
+  const [showRegister, setShowRegister] = useState(false);
+   
   const [showManageModal, setShowManageModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [showSharedWithMeModal, setShowSharedWithMeModal] = useState(false);
 
-  const [selectedFolderIdsforSearch, setSelectedFolderIdsforSearch] = useState([]);
-  const [selectedFolderIdsforUpload, setSelectedFolderIdsforUpload] = useState([]);
+  const [selectedFoldersForSearch, setSelectedFoldersForSearch] = useState([]);
+  const [selectedFoldersForUpload, setSelectedFoldersForUpload] = useState([]);
   
   // Memoized event handlers for better performance
   const handleManage = useCallback(() => setShowManageModal(true), []);
@@ -46,21 +48,11 @@ function App() {
           {showRegister ? (
             <>
               <Register onRegisterSuccess={setUser} />
-              <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
+              <p className={authStyles.authHint}>
                 Already have an account?{" "}
                 <button 
                   onClick={() => setShowRegister(false)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#667eea',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    fontSize: '14px'
-                  }}
-                  onMouseOver={(e) => e.target.style.color = '#764ba2'}
-                  onMouseOut={(e) => e.target.style.color = '#667eea'}
+                  className={authStyles.linkButton}
                 >
                   Log In
                 </button>
@@ -69,21 +61,11 @@ function App() {
           ) : (
             <>
               <Login onLogin={setUser} />
-              <p style={{ textAlign: 'center', marginTop: '24px', color: '#64748b' }}>
+              <p className={authStyles.authHint}>
                 Don't have an account?{" "}
                 <button 
                   onClick={() => setShowRegister(true)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: '#667eea',
-                    fontWeight: '600',
-                    cursor: 'pointer',
-                    textDecoration: 'underline',
-                    fontSize: '14px'
-                  }}
-                  onMouseOver={(e) => e.target.style.color = '#764ba2'}
-                  onMouseOut={(e) => e.target.style.color = '#667eea'}
+                  className={authStyles.linkButton}
                 >
                   Register
                 </button>
@@ -107,12 +89,12 @@ function App() {
 
       {/* Main Content - Search Card */}
       <div className="main-content">
-        <Card title="🔍 Search Images">
-          <SearchImage selectedFolderIds={selectedFolderIdsforSearch}/>
-          <div style={{ marginTop: '24px', paddingTop: '24px', borderTop: '1px solid #e1e8ed' }}>
+        <Card title="Search Images">
+          <SearchImage selectedFolderIds={selectedFoldersForSearch}/>
+          <div className={authStyles.divider}>
             <GetFolders 
-              selectedFolderIds={selectedFolderIdsforSearch}
-              setSelectedFolderIds={setSelectedFolderIdsforSearch}
+              selectedFolderIds={selectedFoldersForSearch}
+              setSelectedFolderIds={setSelectedFoldersForSearch}
               refreshTrigger={showManageModal}
             />
           </div>
@@ -124,11 +106,10 @@ function App() {
         <Modal 
           isOpen={showManageModal} 
           onClose={() => setShowManageModal(false)}
-          title="Manage Folders"
-        >
+          title="Manage Folders">
           <UploadFolderPanel
-            selectedFolderIds={selectedFolderIdsforUpload}
-            setSelectedFolderIds={setSelectedFolderIdsforUpload}
+            selectedFolderIds={selectedFoldersForUpload}
+            setSelectedFolderIds={setSelectedFoldersForUpload}
           />
         </Modal>
       )}

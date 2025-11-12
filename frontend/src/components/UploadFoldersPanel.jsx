@@ -56,12 +56,25 @@ function UploadFolderPanel({
           )}
   
           {(mode === "add_to_existing" || mode === "delete_folder") && (
-            <GetFolders
-              selectedFolderIds={selectedFolderIds}
-              setSelectedFolderIds={setSelectedFolderIds}
-              mode={mode}
-              refreshTrigger={refreshKey}
-            />
+                        <>
+              {mode === "add_to_existing" && (
+                <p style={{ marginBottom: '12px', fontWeight: 500 }}>
+                  Choose folder to expand
+                </p>
+              )}
+              {mode === "delete_folder" && (
+                <p style={{ marginBottom: '12px', fontWeight: 500, color: '#c62828' }}>
+                  Choose folder to delete
+                </p>
+              )}
+              <GetFolders
+                selectedFolderIds={selectedFolderIds}
+                setSelectedFolderIds={setSelectedFolderIds}
+                mode={mode}
+                refreshTrigger={refreshKey}
+                variant="listOnly"
+              />
+            </>
           )}
   
           {mode === "add_to_existing" && selectedFolderIds.length > 0 && (

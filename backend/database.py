@@ -84,7 +84,6 @@ def delete_folder_by_id(folder_id, user_id):
     cur = conn.cursor()
     
     try:
-        # IMPORTANT: Delete images FIRST, then folder (foreign key constraint)
         print(f"[DB] Deleting images for folder_id={folder_id}")
         cur.execute("DELETE FROM images WHERE folder_id = ?", (folder_id,))
         images_deleted = cur.rowcount

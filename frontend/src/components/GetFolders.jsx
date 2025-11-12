@@ -17,14 +17,15 @@ async function getFolders() {
   return await res.json();
 }
 
-function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, refreshTrigger}) {
+function GetFolders({selectedFolderIds, setSelectedFolderIds, refreshTrigger, variant}) {
   const [folders, setFolders] = useState([]);
   const [error, setError] = useState('');
   const [showFolders, setShowFolders] = useState(false);
+  const simpleList = variant === 'listOnly';
 
-  // ✅ Memoize fetchFolders to prevent recreation on every render
+  // Memoize fetchFolders to prevent recreation on every render
   const fetchFolders = useCallback(async () => {
-    if (showFolders) {
+    if (showFolders && !simpleList) {
       setShowFolders(false);
       return;
     }
@@ -37,7 +38,7 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
       setError(err.message);
       setFolders([]);
     }
-  }, [showFolders]); // Only recreate when showFolders changes
+  }, [showFolders, simpleList]); 
 
   // Auto-fetch folders when component mounts OR when refreshTrigger changes
   useEffect(() => {
@@ -47,19 +48,15 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
         const res = await getFolders();
         setFolders(res.folders);
         setShowFolders(true);
-        // Update parent component's folders if callback provided
-        if (onFoldersUpdate) {
-          onFoldersUpdate(res.folders);
-        }
       } catch (err) {
         setError(err.message);
         setFolders([]);
       }
     };
     autoFetch();
-  }, [onFoldersUpdate, refreshTrigger]); // Re-run when refreshTrigger changes
+  }, [refreshTrigger, simpleList]); 
 
-  // ✅ Memoize handleClick to prevent child re-renders
+  // Memoize handleClick to prevent child re-renders
   const handleClick = useCallback((folderId) => {
     setSelectedFolderIds(prev => {
       if (prev.includes(folderId)) {
@@ -70,36 +67,38 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
     });
   }, [setSelectedFolderIds]); // setSelectedFolderIds is stable from useState
 
-  // ✅ Memoize computed values for performance
+  // Memoize computed values for performance
   const selectedCount = useMemo(() => selectedFolderIds.length, [selectedFolderIds]);
 
   return (
     <div style={{ width: '100%' }}>
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center',
-        marginBottom: '16px'
-      }}>
-        <h3 style={{ margin: 0, color: '#2c3e50' }}>
-          📁 Select Folders to Search {selectedCount > 0 && `(${selectedCount} selected)`}
-        </h3>
-        <button 
-          onClick={fetchFolders}
-          style={{
-            padding: '8px 16px',
-            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '8px',
-            cursor: 'pointer',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}
-        >
-          {showFolders ? '▲ Collapse' : '▼ Expand'}
-        </button>
-      </div>
+        {!simpleList && (
+        <div style={{
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          marginBottom: '16px'
+        }}>
+          <h3 style={{ margin: 0, color: '#2c3e50' }}>
+            Select Folders to Search from{selectedCount > 0 && `(${selectedCount} selected)`}
+          </h3>
+          <button
+            onClick={fetchFolders}
+            style={{
+              padding: '8px 16px',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              fontSize: '14px',
+              fontWeight: '500'
+            }}
+          >
+            {showFolders ? '▲ Collapse' : '▼ Expand'}
+          </button>
+        </div>
+      )}
 
       {error && (
         <p style={{ 
@@ -127,14 +126,16 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, onFoldersUpdate, r
 
       {showFolders && folders.length > 0 && (
         <div>
-          <p style={{ 
-            fontSize: '14px', 
-            color: '#64748b', 
-            marginBottom: '12px',
-            fontStyle: 'italic'
-          }}>
-            💡 Tip: Select folders to narrow your search, or leave unselected to search all folders
-          </p>
+          {!simpleList && (
+            <p style={{
+              fontSize: '14px',
+              color: '#64748b',
+              marginBottom: '12px',
+              fontStyle: 'italic'
+            }}>
+              Select folders to narrow your search, or leave unselected to search all folders
+            </p>
+          )}
           <div style={{ 
             display: 'grid',
             gridTemplateColumns: 'repeat(auto-fill, minmax(250px, 1fr))',

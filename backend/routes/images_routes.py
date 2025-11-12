@@ -202,7 +202,7 @@ def search_images(
     
     # Parse folder_ids from comma-separated string to list
     # If no folder_ids provided (or empty string), search all accessible folders (owned + shared)
-    from database import get_all_accessible_folders, check_folder_access, get_conn
+    from database import get_all_accessible_folders, check_folder_access
     
     # Build a mapping of folder_id to owner_user_id for FAISS index paths
     folder_owner_map = {}

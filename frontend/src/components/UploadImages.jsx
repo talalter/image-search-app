@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, {useEffect, useState, useCallback, useMemo } from 'react';
 
 // Upload files in batches for better performance
 async function uploadImagesInBatches(files, folderName, onProgress) {
@@ -36,7 +36,7 @@ async function uploadImagesInBatches(files, folderName, onProgress) {
   return { uploaded_count: totalUploaded };
 }
 
-function UploadImages({mode, onUploadSuccess, folderId}) {
+function UploadImages({folderId, onUploadSuccess}) {
   const [files, setFiles] = useState([]);
   const [folderName, setFolderName] = useState('');
   const [message, setMessage] = useState('');
@@ -46,7 +46,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
   const [existingFolderName, setExistingFolderName] = useState('');
 
   // Fetch folder name when folderId is provided (for adding to existing folder)
-  React.useEffect(() => {
+  useEffect(() => {
     if (folderId) {
       const fetchFolderInfo = async () => {
         try {
@@ -68,7 +68,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     }
   }, [folderId]);
 
-  // ✅ Memoize file change handler
+  // Memoize file change handler
   const handleFileChange = useCallback((e) => {
     const selectedFiles = Array.from(e.target.files);
     
@@ -85,7 +85,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     setFiles(selectedFiles);
   }, [folderId]);
 
-  // ✅ Memoize drag handlers to prevent recreation
+  // Memoize drag handlers to prevent recreation
   const handleDragEnter = useCallback((e) => {
     e.preventDefault();
     e.stopPropagation();
@@ -170,12 +170,12 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     }
   };
 
-  // ✅ Memoize progress update callback to prevent recreation
+  // Memoize progress update callback to prevent recreation
   const updateProgress = useCallback((current, total) => {
     setUploadProgress({ current, total });
   }, []);
 
-  // ✅ Memoize upload handler
+  // Memoize upload handler
   const handleUpload = useCallback(async () => {
     if (files.length === 0) {
       setMessage('Please select files to upload.');
@@ -190,7 +190,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
         folderName, 
         updateProgress
       );
-      setMessage(`✅ Successfully uploaded ${res.uploaded_count} images.`);
+      setMessage(`Successfully uploaded ${res.uploaded_count} images.`);
       setFiles([]);
       setFolderName('');
       setUploadProgress({ current: 0, total: 0 });
@@ -217,7 +217,7 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
     }
   }, [files, folderName, updateProgress, onUploadSuccess]);
 
-  // ✅ Memoize computed values
+  // Memoize computed values
   const hasFiles = useMemo(() => files.length > 0, [files.length]);
   const isAddingToExisting = useMemo(() => Boolean(folderId), [folderId]);
 
@@ -373,9 +373,9 @@ function UploadImages({mode, onUploadSuccess, folderId}) {
           padding: '12px',
           borderRadius: '8px',
           marginTop: '10px',
-          backgroundColor: message.includes('✅') ? '#d1fae5' : '#fee2e2',
-          border: message.includes('✅') ? '1px solid #6ee7b7' : '1px solid #fca5a5',
-          color: message.includes('✅') ? '#065f46' : '#991b1b'
+          backgroundColor: message.includes('Successfully') ? '#d1fae5' : '#fee2e2',
+          border: message.includes('Successfully') ? '1px solid #6ee7b7' : '1px solid #fca5a5',
+          color: message.includes('Successfully') ? '#065f46' : '#991b1b'
         }}>
           {message}
         </div>
