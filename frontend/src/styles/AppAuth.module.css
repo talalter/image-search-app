@@ -1,0 +1,32 @@
+.authHint {
+  text-align: center;
+  margin-top: 24px;
+  color: #64748b;
+}
+
+.linkButton {
+  background: none;
+  border: none;
+  color: #667eea;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  font-size: 14px;
+  padding: 0;
+}
+
+.linkButton:hover {
+  color: #764ba2;
+}
+
+.divider {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #e1e8ed;
+}
+
+.authHint {
+  text-align: center;
+  margin-top: 24px;
+  color: #64748b;
+}
