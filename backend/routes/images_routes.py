@@ -1,9 +1,10 @@
 from typing import List, Optional
 from faiss_handler import FaissManager
-from fastapi import UploadFile, File, Body, APIRouter, Form, HTTPException, BackgroundTasks # type: ignore
+from fastapi import UploadFile, File, Body, APIRouter, Form, HTTPException, BackgroundTasks, Depends # type: ignore
 from pydantic_models import (
     FolderDeleteRequest,
     FoldersListResponse,
+    CombinedFoldersResponse,
     SearchImageRequest,
     SearchImageResponse,
     ImageSearchResult,
@@ -176,37 +177,28 @@ async def upload_multiple_images(
 
 
 @router.get("/search-images", response_model=SearchImageResponse)
-def search_images(
-    token: str,
-    query: str,
-    top_k: int = 5,
-    folder_ids: Optional[str] = None
-):
+def search_images(params: SearchImageRequest = Depends()):
     """
     Search for images using text query.
-    
-    Why GET instead of POST?
-    - GET is the REST standard for read-only operations
-    - Search doesn't modify data on the server (idempotent)
-    - Results are cacheable (better performance)
-    - URLs are bookmarkable/shareable
-    - Browser back button works naturally
-    - Follows conventions (Google, Amazon, etc. use GET for search)
-    
-    Parameters are validated against SearchImageRequest model internally.
     """
+    # Extract values from typed request model
+    token = params.token
+    query = params.query
+    top_k = params.top_k or 5
+    folder_ids = params.folder_ids
+
     # Extract and validate user from token
     user_id = get_user_id_from_token(token)
     if not user_id:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
     # Parse folder_ids from comma-separated string to list
     # If no folder_ids provided (or empty string), search all accessible folders (owned + shared)
     from database import get_all_accessible_folders, check_folder_access
-    
+
     # Build a mapping of folder_id to owner_user_id for FAISS index paths
     folder_owner_map = {}
-    
+
     if not folder_ids:
         all_folders = get_all_accessible_folders(user_id)
         folder_id_list = [folder['id'] for folder in all_folders]
@@ -221,7 +213,7 @@ def search_images(
         # Convert "1,2,3" to [1, 2, 3] and verify user has access to each
         requested_folder_ids = [int(fid.strip()) for fid in folder_ids.split(",") if fid.strip()]
         folder_id_list = []
-        
+
         for fid in requested_folder_ids:
             access = check_folder_access(user_id, fid)
             if access:  # User has access (either owns it or it's shared)
@@ -248,7 +240,7 @@ def search_images(
     return SearchImageResponse(results=results)  
 
 
-@router.get("/get-folders", response_model=FoldersListResponse)
+@router.get("/get-folders", response_model=CombinedFoldersResponse)
 def get_folders(token: str):
     """
     Get all folders for a user (owned + shared with them).
@@ -262,9 +254,13 @@ def get_folders(token: str):
     
     user_id = get_user_id_from_token(token)
     folders = get_all_accessible_folders(user_id)
-    
-    # Return matches FoldersListResponse model structure
-    return FoldersListResponse(folders=folders)
+
+    # Build grouped lists for owned vs shared
+    owned = [f for f in folders if f.get('is_owner')]
+    shared = [f for f in folders if not f.get('is_owner')]
+
+    # Return both flat list and grouped lists for backward compatibility
+    return CombinedFoldersResponse(folders=folders, owned=owned, shared=shared)
 
 
 

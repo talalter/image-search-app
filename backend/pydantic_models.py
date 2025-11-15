@@ -34,6 +34,21 @@ class FoldersListResponse(BaseModel):
     """List of folders for a user"""
     folders: List[FolderResponse]
 
+
+class SharedFolderResponse(FolderResponse):
+    """Folder response for shared folders including owner info"""
+    owner_id: Optional[int] = None
+    owner_username: Optional[str] = None
+    permission: Optional[str] = None
+    shared_at: Optional[str] = None
+
+
+class CombinedFoldersResponse(BaseModel):
+    """Return both flat folders list and grouped owned/shared lists for compatibility"""
+    folders: List[FolderResponse]
+    owned: List[FolderResponse]
+    shared: List[SharedFolderResponse]
+
 # ============== Image Search Models ==============
 class SearchImageRequest(BaseModel):
     """Request model for image search query parameters"""
