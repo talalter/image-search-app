@@ -1,0 +1,119 @@
+/* layout.css - app level layout and header */
+.app-container {
+  min-height: 100vh;
+  padding: 0px  350px 20px 8px;
+}
+
+.dashboard-layout {
+  max-width: 1200px;
+  margin: 0px auto;
+  display: grid;
+  grid-template-columns: 20% 80%;
+  gap: 100px;
+}
+
+.dashboard-header {
+  align-self: start;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  
+  height: 100vh;          /* 🔥 Makes it fill the whole screen height */
+  
+  margin: 0;              /* 🔥 Remove space from top & bottom */
+  padding: 20px 24px;     /* Keep padding if you want internal spacing */
+  
+  background: rgb(230, 230, 237);
+  border-radius: 0;       /* Optional: remove radius if you want full-bleed */
+  
+  box-shadow: none;       /* Optional */
+}
+
+/* Ensure the main content aligns to the top of the grid cell */
+.main-content {
+  align-self: start;
+}
+
+/* Header buttons container: stack buttons vertically */
+.header-buttons {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  margin-top: 12px;
+}
+
+.welcome-text {
+  font-size: 24px;
+  font-weight: 600;
+  color: #333;
+  margin: 0;
+}
+
+/* small popup area under the welcome text for the logout button */
+.logout-popup {
+  margin-top: 10px;
+  margin-bottom: 10px;
+}
+
+/* user badge (avatar + name) */
+.user-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+
+.user-avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  font-weight: 700;
+}
+
+.user-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: #333;
+}
+
+.manage-button {
+  padding: 12px 24px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.manage-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.6);
+}
+
+
+
+/* Responsive layout: stack on small screens */
+@media (max-width: 900px) {
+  .dashboard-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: static;
+    min-height: auto;
+  }
+}
