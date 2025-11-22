@@ -1,27 +1,16 @@
 import React from 'react';
+import { clearToken, logoutUser } from '../utils/api';
 
 function LogOut({ onLogout }) {
   const handleLogout = async () => {
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ token }),
-      });
-
-      if (response.ok) {
-        // Clear token from localStorage
-        localStorage.removeItem('token');
-        // Call parent callback to update app state
-        if (onLogout) {
-          onLogout();
-        }
-      } else {
-        console.error('Logout failed');
-        alert('Logout failed. Please try again.');
+      await logoutUser(token);
+      // Clear token from localStorage
+      clearToken();
+      // Call parent callback to update app state
+      if (onLogout) {
+        onLogout();
       }
     } catch (error) {
       console.error('Error during logout:', error);
@@ -30,8 +19,9 @@ function LogOut({ onLogout }) {
   };
 
   return (
-    <button 
-      onClick={handleLogout}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <button 
+        onClick={handleLogout}
       style={{
         padding: '10px 20px',
         background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
@@ -42,7 +32,7 @@ function LogOut({ onLogout }) {
         fontWeight: '600',
         cursor: 'pointer',
         transition: 'all 0.3s ease',
-        boxShadow: '0 2px 8px rgba(102, 126, 234, 0.3)'
+        boxShadow: '0 2px 8px rgba(112, 250, 0, 0.3)'
       }}
       onMouseOver={(e) => {
         e.target.style.transform = 'translateY(-2px)';
@@ -53,8 +43,9 @@ function LogOut({ onLogout }) {
         e.target.style.boxShadow = '0 2px 8px rgba(102, 126, 234, 0.3)';
       }}
     >
-      🚪 Logout
+      Logout
     </button>
+    </div>
   );
 }
 

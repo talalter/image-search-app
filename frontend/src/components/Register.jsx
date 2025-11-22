@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import UniMageLogo from './UniMageLogo';
-import { loginUser, saveToken } from '../utils/api';
+import { loginUser, saveToken, registerUser } from '../utils/api';
 
 function Register({ onRegisterSuccess }) {
   const [username, setUsername] = useState('');
@@ -23,17 +23,7 @@ function Register({ onRegisterSuccess }) {
     setLoading(true);
 
     try {
-      const res = await fetch('/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Registration failed');
-      }
+      const data = await registerUser(username, password);
 
       // Account created! Now automatically log them in
       setMessage(`Account created! Logging you in...`);

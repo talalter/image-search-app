@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { togglePublic, generateShareLink, shareWithUser } from '../utils/api';
 
 function FolderSharing({ folder, onClose, onUpdate }) {
   const [isPublic, setIsPublic] = useState(folder.is_public || false);
@@ -17,23 +18,7 @@ function FolderSharing({ folder, onClose, onUpdate }) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/toggle-public', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          folder_id: folder.id,
-          is_public: !isPublic,
-          description: description
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Failed to update folder');
-      }
-
+      const data = await togglePublic({ token, folder_id: folder.id, is_public: !isPublic, description });
       setIsPublic(!isPublic);
       setMessage(data.message);
       if (onUpdate) onUpdate();
@@ -51,21 +36,7 @@ function FolderSharing({ folder, onClose, onUpdate }) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/generate-share-link', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          folder_id: folder.id
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Failed to generate share link');
-      }
-
+      const data = await generateShareLink({ token, folder_id: folder.id });
       setShareToken(data.share_token);
       setMessage('Share link generated successfully! Copy the link below.');
     } catch (err) {
@@ -87,23 +58,7 @@ function FolderSharing({ folder, onClose, onUpdate }) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/share-with-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          folder_id: folder.id,
-          target_username: targetUsername,
-          permission: permission
-        })
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Failed to share folder');
-      }
-
+      const data = await shareWithUser({ token, folder_id: folder.id, target_username: targetUsername, permission });
       setMessage(`Folder shared with ${targetUsername}!`);
       setTargetUsername('');
       if (onUpdate) onUpdate();

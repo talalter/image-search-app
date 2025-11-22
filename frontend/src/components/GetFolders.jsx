@@ -1,21 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-
-
-async function getFolders() {
-  const token = localStorage.getItem('token');
-  const params = new URLSearchParams({ token });
-
-  const res = await fetch(`/get-folders?${params.toString()}`, {
-    method: 'GET',
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error('Failed to fetch folders: ' + errorText);
-  }
-
-  return await res.json();
-}
+import { getFolders as apiGetFolders } from '../utils/api';
 
 function GetFolders({selectedFolderIds, setSelectedFolderIds, refreshTrigger, variant}) {
   const [folders, setFolders] = useState([]);
@@ -31,8 +15,8 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, refreshTrigger, va
     }
     setError('');
     try {
-      const res = await getFolders();
-      setFolders(res.folders);
+  const res = await apiGetFolders();
+  setFolders(res.folders);
       setShowFolders(true);
     } catch (err) {
       setError(err.message);
@@ -42,10 +26,10 @@ function GetFolders({selectedFolderIds, setSelectedFolderIds, refreshTrigger, va
 
   // Auto-fetch folders when component mounts OR when refreshTrigger changes
   useEffect(() => {
-    const autoFetch = async () => {
+      const autoFetch = async () => {
       setError('');
       try {
-        const res = await getFolders();
+        const res = await apiGetFolders();
         setFolders(res.folders);
         setShowFolders(true);
       } catch (err) {

@@ -1,34 +1,5 @@
 import React, { useState, useCallback } from 'react';
-
-
-async function searchImages(query, folderIds, top_k = 1) {
-  const token = localStorage.getItem('token');
-  
-  // Build query parameters for GET request
-  // GET is appropriate because search is a read-only operation
-  const params = new URLSearchParams({
-    token,
-    query,
-    top_k: top_k.toString(),
-  });
-
-  // Add folder_ids as comma-separated string if provided
-  // If empty, backend will search all folders
-  if (folderIds.length > 0) {
-    params.append('folder_ids', folderIds.join(','));
-  }
-
-  const res = await fetch(`/search-images?${params.toString()}`, {
-    method: 'GET',
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error('Search failed: ' + errorText);
-  }
-
-  return await res.json();
-}
+import { searchImages as apiSearchImages } from '../utils/api';
 
 
 function SearchImage({ selectedFolderIds }) {
@@ -42,13 +13,21 @@ function SearchImage({ selectedFolderIds }) {
   const handleSearch = useCallback(async () => {
     setError('');
     try {
-      const res = await searchImages(query, selectedFolderIds, topK);
+      const res = await apiSearchImages(query, selectedFolderIds, topK);
       setResults(res.results || []);
     } catch (err) {
-      setError(err.message);
+      setError(err.message || (err.details ? JSON.stringify(err.details) : 'Search failed'));
       setResults([]);
     }
   }, [query, selectedFolderIds, topK]); // Recreate only when these dependencies change
+
+  // Clear all images / reset UI to initial logged-in state
+  const handleClear = useCallback(() => {
+    setResults([]);
+    setQuery('');
+    setTopK(topK);
+    setError('');
+  }, []);
 
   return (
     <div>
@@ -72,6 +51,12 @@ function SearchImage({ selectedFolderIds }) {
         </div>
         <button className="search-button" onClick={handleSearch}>
           Search
+        </button>
+        <button
+          className="search-button"
+          onClick={handleClear}
+        >
+          Clear
         </button>
       </div>
 

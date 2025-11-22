@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getPublicFolders } from '../utils/api';
 
 function PublicFolders({ onSelectFolder }) {
   const [folders, setFolders] = useState([]);
@@ -14,16 +15,7 @@ function PublicFolders({ onSelectFolder }) {
     setError('');
 
     try {
-      const res = await fetch('/public-folders', {
-        method: 'GET'
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Failed to fetch public folders');
-      }
-
+      const data = await getPublicFolders();
       setFolders(data.folders);
     } catch (err) {
       setError(err.message);
