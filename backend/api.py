@@ -6,11 +6,16 @@ from fastapi import FastAPI, HTTPException # type: ignore
 from fastapi.staticfiles import StaticFiles # type: ignore
 from pathlib import Path
 import os
+from exception_handlers import register_exception_handlers
 
 storage_backend = os.getenv("STORAGE_BACKEND", "local").lower()
 
 
 app = FastAPI()
+
+# Register global exception handlers (similar to @ControllerAdvice in Spring Boot)
+register_exception_handlers(app)
+
 if storage_backend == 'local':
     BASE_DIR = Path(__file__).resolve().parent      # .../backend
     IMAGES_ROOT = (BASE_DIR / "images").resolve()   # .../backend/images
