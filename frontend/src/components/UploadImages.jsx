@@ -1,4 +1,5 @@
 import React, {useEffect, useState, useCallback, useMemo } from 'react';
+import { uploadImagesForm, getFolders as apiGetFolders } from '../utils/api';
 
 // Upload files in batches for better performance
 async function uploadImagesInBatches(files, folderName, onProgress) {
@@ -14,17 +15,7 @@ async function uploadImagesInBatches(files, folderName, onProgress) {
     formData.append('folderName', folderName);
     batch.forEach(file => formData.append('files', file));
 
-    const res = await fetch('/upload-images', {
-      method: 'POST',
-      body: formData,
-    });
-
-    if (!res.ok) {
-      const errorText = await res.text();
-      throw new Error('Image upload failed: ' + errorText);
-    }
-    
-    const result = await res.json();
+    const result = await uploadImagesForm(formData);
     totalUploaded += result.uploaded_count;
     
     // Update progress
@@ -50,15 +41,11 @@ function UploadImages({folderId, onUploadSuccess}) {
     if (folderId) {
       const fetchFolderInfo = async () => {
         try {
-          const token = localStorage.getItem('token');
-          const response = await fetch(`/get-folders?token=${token}`);
-          if (response.ok) {
-            const data = await response.json();
-            const folder = data.folders.find(f => f.id === parseInt(folderId));
-            if (folder) {
-              setExistingFolderName(folder.folder_name);
-              setFolderName(folder.folder_name); // Set this as the upload target
-            }
+          const data = await apiGetFolders();
+          const folder = data.folders.find(f => f.id === parseInt(folderId));
+          if (folder) {
+            setExistingFolderName(folder.folder_name);
+            setFolderName(folder.folder_name); // Set this as the upload target
           }
         } catch (error) {
           console.error('Error fetching folder info:', error);

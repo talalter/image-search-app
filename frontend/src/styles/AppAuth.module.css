@@ -1,13 +1,13 @@
 .authHint {
-  text-align: center;
+  text-align: left;
   margin-top: 24px;
-  color: #64748b;
+  color: #0065f3;
 }
 
 .linkButton {
   background: none;
   border: none;
-  color: #667eea;
+  color: #0c63dc;
   font-weight: 600;
   cursor: pointer;
   text-decoration: underline;

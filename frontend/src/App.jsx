@@ -1,33 +1,32 @@
 import React, { useState, useCallback } from 'react';
-import './App.css';
+import './styles/base.css';
+import './styles/layout.css';
+import './styles/components/card.css';
+import './styles/components/modal.css';
+import './styles/components/folders.css';
+import './styles/components/search.css';
 import Login from './components/Login.jsx';
 import authStyles from './styles/AppAuth.module.css';
 import Register from './components/Register.jsx';
-import SearchImage from './components/SearchImages.jsx';
-import GetFolders from './components/GetFolders.jsx';
+import SearchPanel from './components/SearchPanel.jsx';
 import UploadFolderPanel from './components/UploadFoldersPanel.jsx';
 import Modal from './components/Modal.jsx';
 import Card from './components/Card.jsx';
 import HeaderButtons from './components/HeaderButtons.jsx';
 import ShareFolder from './components/ShareFolder.jsx';
-import SharedWithMe from './components/SharedWithMe.jsx';
 
 
 function App() {
   const [user, setUser] = useState(null);
   const [showRegister, setShowRegister] = useState(false);
-   
   const [showManageModal, setShowManageModal] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
-  const [showSharedWithMeModal, setShowSharedWithMeModal] = useState(false);
-
   const [selectedFoldersForSearch, setSelectedFoldersForSearch] = useState([]);
   const [selectedFoldersForUpload, setSelectedFoldersForUpload] = useState([]);
   
   // Memoized event handlers for better performance
   const handleManage = useCallback(() => setShowManageModal(true), []);
   const handleShare = useCallback(() => setShowShareModal(true), []);
-  const handleSharedWithMe = useCallback(() => setShowSharedWithMeModal(true), []);
   const handleLogout = useCallback(() => {
     setUser(null);
     setShowRegister(false);
@@ -37,7 +36,6 @@ function App() {
   const handlers = {
     onManage: handleManage,
     onShare: handleShare,
-    onSharedWithMe: handleSharedWithMe,
     onLogout: handleLogout
   };
 
@@ -79,34 +77,32 @@ function App() {
 
   return (
     <div className="app-container">
-      {/* Header */}
-      <div className="dashboard-header">
-        <HeaderButtons
-          username={user.username}
-          {...handlers}
-        />
-      </div>
+      <div className="dashboard-layout">
+        {/* Header (left column) */}
+        <div className="dashboard-header">
+          <HeaderButtons
+            username={user.username}
+            {...handlers}
+          />
+        </div>
 
-      {/* Main Content - Search Card */}
-      <div className="main-content">
-        <Card title="Search Images">
-          <SearchImage selectedFolderIds={selectedFoldersForSearch}/>
-          <div className={authStyles.divider}>
-            <GetFolders 
+        {/* Main Content - Search Card (right column) */}
+          <Card title={"Search Images"}>
+            <SearchPanel
               selectedFolderIds={selectedFoldersForSearch}
               setSelectedFolderIds={setSelectedFoldersForSearch}
               refreshTrigger={showManageModal}
             />
-          </div>
-        </Card>
+          </Card>
       </div>
 
       {/* Manage Folders Modal */}
       {showManageModal && (
-        <Modal 
-          isOpen={showManageModal} 
+        <Modal
+          isOpen={showManageModal}
           onClose={() => setShowManageModal(false)}
-          title="Manage Folders">
+          title="Manage Folders"
+        >
           <UploadFolderPanel
             selectedFolderIds={selectedFoldersForUpload}
             setSelectedFolderIds={setSelectedFoldersForUpload}
@@ -121,12 +117,6 @@ function App() {
         />
       )}
 
-      {/* Shared With Me Modal */}
-      {showSharedWithMeModal && (
-        <SharedWithMe 
-          onClose={() => setShowSharedWithMeModal(false)}
-        />
-      )}
     </div>
   );
 }

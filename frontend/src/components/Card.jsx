@@ -1,8 +1,8 @@
 import React from 'react';
 
-function Card({ title, children, footer, style }) {
+function Card({ title, children}) {
   return (
-    <div className="card" style={style}>
+    <div className="card">
       {title && (
         <div className="card-header">
           <h3>{title}</h3>
@@ -11,11 +11,7 @@ function Card({ title, children, footer, style }) {
       <div className="card-body">
         {children}
       </div>
-      {footer && (
-        <div className="card-footer">
-          {footer}
-        </div>
-      )}
+
     </div>
   );
 }

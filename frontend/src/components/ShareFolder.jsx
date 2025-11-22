@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
+import { getFolders as apiGetFolders, shareFolder } from '../utils/api';
 
-function ShareFolder({ onClose }) {
+function ShareFolder({ onClose, inline = false }) {
   const [folders, setFolders] = useState([]);
   const [selectedFolder, setSelectedFolder] = useState('');
   const [username, setUsername] = useState('');
@@ -14,14 +15,7 @@ function ShareFolder({ onClose }) {
   useEffect(() => {
     const fetchFolders = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const res = await fetch(`/get-folders?token=${token}`);
-        const data = await res.json();
-        
-        if (!res.ok) {
-          throw new Error(data.detail || 'Failed to fetch folders');
-        }
-        
+        const data = await apiGetFolders();
         // Filter to only show owned folders (not shared ones)
         const ownedFolders = data.folders.filter(f => f.is_owner !== false);
         setFolders(ownedFolders);
@@ -31,7 +25,7 @@ function ShareFolder({ onClose }) {
         setLoadingFolders(false);
       }
     };
-    
+
     fetchFolders();
   }, []);
 
@@ -54,22 +48,7 @@ function ShareFolder({ onClose }) {
 
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch('/share-folder', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          token,
-          folder_id: parseInt(selectedFolder),
-          username: username.trim(),
-          permission
-        }),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.detail || 'Sharing failed');
-      }
+      const data = await shareFolder({ token, folder_id: parseInt(selectedFolder), username: username.trim(), permission });
 
       setMessage(`✅ Folder shared successfully with ${username}!`);
       setUsername('');
@@ -81,29 +60,20 @@ function ShareFolder({ onClose }) {
     }
   };
 
-  return (
+  // If inline is true we render only the inner white card so this
+  // component can be embedded inside another modal/panel. Otherwise
+  // render as a full-screen overlay modal (existing behaviour).
+  const Inner = (
     <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
+      background: 'white',
+      borderRadius: '16px',
+      padding: '32px',
+      maxWidth: '500px',
+      width: '100%',
+      maxHeight: '80vh',
+      overflow: 'auto',
+      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
     }}>
-      <div style={{
-        background: 'white',
-        borderRadius: '16px',
-        padding: '32px',
-        maxWidth: '500px',
-        width: '90%',
-        maxHeight: '80vh',
-        overflow: 'auto',
-        boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-      }}>
         <div style={{
           display: 'flex',
           justifyContent: 'space-between',
@@ -307,6 +277,26 @@ function ShareFolder({ onClose }) {
           </form>
         )}
       </div>
+  );
+
+  if (inline) {
+    return Inner;
+  }
+
+  return (
+    <div style={{
+      position: 'fixed',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      background: 'rgba(0, 0, 0, 0.5)',
+      display: 'flex',
+      justifyContent: 'center',
+      alignItems: 'center',
+      zIndex: 1000
+    }}>
+      {Inner}
     </div>
   );
 }

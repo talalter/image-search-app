@@ -1,6 +1,9 @@
 import React, { useState } from 'react';    
+import { deleteFolders as apiDeleteFolders } from '../utils/api';
 import UploadImages from './UploadImages.jsx';
 import GetFolders from './GetFolders.jsx';
+import ShareFolder from './ShareFolder.jsx';
+import SharedWithMe from './SharedWithMe.jsx';
 
 
 function UploadFolderPanel({ 
@@ -11,28 +14,22 @@ function UploadFolderPanel({
     const [refreshKey, setRefreshKey] = useState(0); // Force refresh of GetFolders
 
     const deleteFolders = async (folderIds) => {
-      const token = localStorage.getItem("token");
       try {
-        const res = await fetch('/delete-folders', {
-          method: 'DELETE',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ token, folder_ids: folderIds }),
-        });
-        if (!res.ok) throw new Error(await res.text());
+        await apiDeleteFolders(folderIds);
         alert("Folders deleted successfully");
-        
+
         // Clear selection and force refresh
         setSelectedFolderIds([]);
         setRefreshKey(prev => prev + 1);
       } catch (err) {
-        alert("Error deleting folders: " + err.message);
+        alert("Error deleting folders: " + (err.message || JSON.stringify(err)));
       }
     }
   
     return (
       <div className="upload-panel">
   
-        <div className="mode-buttons">
+  <div className="mode-buttons">
 
         <button onClick={() => setMode(prev => prev === "upload_new" ? null : "upload_new")}>
         Upload New Folder
@@ -42,9 +39,17 @@ function UploadFolderPanel({
         Add Images to Existing Folder
         </button>
 
-        <button onClick={() => setMode(prev => prev === "delete_folder" ? null : "delete_folder")}>
-        Delete Folder
-        </button>
+  <button onClick={() => setMode(prev => prev === "delete_folder" ? null : "delete_folder")}>
+  Delete Folder
+  </button>
+
+  <button onClick={() => setMode(prev => prev === "share_folder" ? null : "share_folder") }>
+  Share Folder
+  </button>
+
+  <button onClick={() => setMode(prev => prev === "shared_with_me" ? null : "shared_with_me") }>
+  Shared With Me
+  </button>
 
         </div>
   
@@ -77,6 +82,14 @@ function UploadFolderPanel({
             </>
           )}
   
+          {mode === "share_folder" && (
+            <ShareFolder onClose={() => setMode(null)} inline />
+          )}
+
+          {mode === "shared_with_me" && (
+            <SharedWithMe onClose={() => setMode(null)} inline />
+          )}
+
           {mode === "add_to_existing" && selectedFolderIds.length > 0 && (
             <UploadImages 
               folderId={selectedFolderIds[0]} 

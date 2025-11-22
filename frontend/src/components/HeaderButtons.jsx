@@ -1,35 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
 import LogOut from './Logout.jsx';
+import DeleteAccount from './DeleteAccount';
 
 function HeaderButtons({ 
   username, 
   onManage, 
-  onShare, 
-  onSharedWithMe, 
   onLogout 
 }) {
+  const [showLogout, setShowLogout] = useState(false);
   return (
     <>
-      <h2 className="welcome-text">Welcome, {username}</h2>
-      <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
-        <button className="manage-button" onClick={onManage}>
+      <button
+        className="user-badge"
+        onClick={() => setShowLogout(prev => !prev)}
+        aria-expanded={showLogout}
+        type="button"
+      >
+        <span className="user-avatar">{username && username[0] ? username[0].toUpperCase() : '?'}</span>
+        <span className="user-name">{username}</span>
+      </button>
+      {showLogout && (
+        <div className="logout-popup">
+          <LogOut onLogout={onLogout} />
+          <p> </p>
+          <DeleteAccount onLogout={onLogout} />
+        </div>
+      )}
+      <div className="header-buttons">
+        <button className="manage-button"
+         onClick={onManage}
+>
           📁 Manage Folders
         </button>
-        <button 
-          className="manage-button" 
-          onClick={onShare}
-          style={{ background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)' }}
-        >
-          📤 Share Folder
-        </button>
-        <button 
-          className="manage-button" 
-          onClick={onSharedWithMe}
-          style={{ background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)' }}
-        >
-          📥 Shared With Me
-        </button>
-        <LogOut onLogout={onLogout} />
+        {/* Shared With Me moved inside Manage Folders modal */}
+        {/* Logout moved to appear when clicking the username */}
       </div>
     </>
   );

@@ -3,7 +3,6 @@ from faiss_handler import FaissManager
 from fastapi import UploadFile, File, Body, APIRouter, Form, HTTPException, BackgroundTasks, Depends # type: ignore
 from pydantic_models import (
     FolderDeleteRequest,
-    FoldersListResponse,
     CombinedFoldersResponse,
     SearchImageRequest,
     SearchImageResponse,
