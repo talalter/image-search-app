@@ -50,10 +50,16 @@ class InvalidInputException(Exception):
 
 
 class InvalidCredentialsException(Exception):
-    """Raised when login credentials are invalid."""
-    def __init__(self, message: str = "Invalid username or password"):
+    """Raised when login credentials are invalid.
+
+    Keeps a generic message by default to avoid username enumeration, but
+    accepts an optional `username` for logging/internal diagnostics.
+    """
+    def __init__(self, message: str = "Invalid username or password", username: str | None = None):
         super().__init__(message)
         self.message = message
+        # Optional username - do not expose back to clients, used only for logs
+        self.username = username
 
 
 class StorageException(Exception):

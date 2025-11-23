@@ -1,5 +1,6 @@
 # database.py
-import sqlite3
+import psycopg2
+import psycopg2.extras
 import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
@@ -16,16 +17,29 @@ from exceptions import (
 # Initialize logger for this module
 logger = get_logger(__name__)
 
-# Use data directory for Docker volume, fallback to current dir for local dev
-DB_DIR = os.getenv("DB_DIR", ".")
-os.makedirs(DB_DIR, exist_ok=True)
-DB_NAME = os.path.join(DB_DIR, "database.sqlite")
+# PostgreSQL connection parameters - matching Java backend configuration
+DB_HOST = os.getenv("DB_HOST", "localhost")
+DB_PORT = os.getenv("DB_PORT", "5432")
+DB_NAME = os.getenv("DB_NAME", "imagesearch")
+DB_USER = os.getenv("DB_USERNAME", "imageuser")
+DB_PASSWORD = os.getenv("DB_PASSWORD", "imagepass123")
 
-logger.info(f"Database configured", extra={"db_path": DB_NAME, "db_dir": DB_DIR})
+logger.info(f"Database configured", extra={
+    "db_host": DB_HOST,
+    "db_port": DB_PORT,
+    "db_name": DB_NAME,
+    "db_user": DB_USER
+})
 
 def get_conn():
-    conn = sqlite3.connect(DB_NAME)
-    conn.execute("PRAGMA foreign_keys = ON")
+    """Get a PostgreSQL database connection."""
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD
+    )
     return conn
 
 
@@ -43,8 +57,13 @@ def get_db_connection():
     This ensures connections are properly closed even if exceptions occur,
     preventing connection leaks (similar to Java's try-with-resources pattern).
     """
-    conn = sqlite3.connect(DB_NAME)
-    conn.execute("PRAGMA foreign_keys = ON")
+    conn = psycopg2.connect(
+        host=DB_HOST,
+        port=DB_PORT,
+        database=DB_NAME,
+        user=DB_USER,
+        password=DB_PASSWORD
+    )
     try:
         yield conn
         conn.commit()
@@ -55,22 +74,29 @@ def get_db_connection():
         conn.close()
 
 def init_db():
+    """
+    Initialize PostgreSQL database schema.
+    Note: This will use the same database and tables as the Java backend.
+    Tables may already exist if Java backend has run first.
+    """
     conn = get_conn()
     cur = conn.cursor()
 
+    # PostgreSQL uses SERIAL for auto-increment and VARCHAR/TEXT
+    # TIMESTAMP defaults work differently in PostgreSQL
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            username TEXT UNIQUE NOT NULL,
-            password TEXT NOT NULL,
+            id BIGSERIAL PRIMARY KEY,
+            username VARCHAR(255) UNIQUE NOT NULL,
+            password VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     """)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS sessions (
-            token TEXT PRIMARY KEY,
-            user_id INTEGER NOT NULL,
+            token VARCHAR(255) PRIMARY KEY,
+            user_id BIGINT NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             expires_at TIMESTAMP NOT NULL,
             last_seen TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -80,9 +106,9 @@ def init_db():
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS folders (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER NOT NULL,
-            folder_name TEXT NOT NULL,
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT NOT NULL,
+            folder_name VARCHAR(255) NOT NULL,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(user_id, folder_name),
             FOREIGN KEY (user_id) REFERENCES users(id)
@@ -91,23 +117,23 @@ def init_db():
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS images (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            user_id INTEGER,
-            folder_id INTEGER,
+            id BIGSERIAL PRIMARY KEY,
+            user_id BIGINT,
+            folder_id BIGINT,
             filepath TEXT,
             uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (user_id) REFERENCES users(id),
-            FOREIGN KEY (folder_id) REFERENCES folders(id)  
+            FOREIGN KEY (folder_id) REFERENCES folders(id)
         )
     """)
 
     cur.execute("""
         CREATE TABLE IF NOT EXISTS folder_shares (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            folder_id INTEGER NOT NULL,
-            owner_id INTEGER NOT NULL,
-            shared_with_user_id INTEGER NOT NULL,
-            permission TEXT DEFAULT 'view',
+            id BIGSERIAL PRIMARY KEY,
+            folder_id BIGINT NOT NULL,
+            owner_id BIGINT NOT NULL,
+            shared_with_user_id BIGINT NOT NULL,
+            permission VARCHAR(50) DEFAULT 'view',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             UNIQUE(folder_id, shared_with_user_id),
             FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE CASCADE,
@@ -118,18 +144,19 @@ def init_db():
 
     conn.commit()
     conn.close()
+    logger.info("Database schema initialized successfully")
 
 def delete_folder_by_id(folder_id, user_id):
     try:
         with get_db_connection() as conn:
             cur = conn.cursor()
-            cur.execute("DELETE FROM images WHERE folder_id = ?", (folder_id,))
-            cur.execute("DELETE FROM folders WHERE id = ? AND user_id = ?", (folder_id, user_id))
+            cur.execute("DELETE FROM images WHERE folder_id = %s", (folder_id,))
+            cur.execute("DELETE FROM folders WHERE id = %s AND user_id = %s", (folder_id, user_id))
             folders_deleted = cur.rowcount
             if folders_deleted == 0:
                 raise RecordNotFoundException("Folder", folder_id)
             return True
-    except sqlite3.Error as e:
+    except psycopg2.Error as e:
         raise DatabaseOperationException(
             f"Failed to delete folder {folder_id}",
             details={"folder_id": folder_id, "user_id": user_id},
@@ -138,16 +165,19 @@ def delete_folder_by_id(folder_id, user_id):
 
 def delete_db():
     """Delete all database tables. WARNING: This is destructive!"""
-    logger.warning("Attempting to delete entire database", extra={"db_path": DB_NAME})
+    logger.warning("Attempting to delete entire database", extra={"db_name": DB_NAME})
     try:
         conn = get_conn()
         cur = conn.cursor()
-        cur.execute("DROP TABLE IF EXISTS users")
-        cur.execute("DROP TABLE IF EXISTS folders")
-        cur.execute("DROP TABLE IF EXISTS images")
+        # Drop tables in correct order due to foreign key constraints
+        cur.execute("DROP TABLE IF EXISTS folder_shares CASCADE")
+        cur.execute("DROP TABLE IF EXISTS images CASCADE")
+        cur.execute("DROP TABLE IF EXISTS sessions CASCADE")
+        cur.execute("DROP TABLE IF EXISTS folders CASCADE")
+        cur.execute("DROP TABLE IF EXISTS users CASCADE")
         conn.commit()
         logger.info("Database tables dropped successfully")
-    except sqlite3.Error as e:
+    except psycopg2.Error as e:
         logger.error(f"Failed to delete database tables", extra={"error": str(e)})
     finally:
         conn.close()
@@ -160,25 +190,25 @@ def delete_user_from_db(user_id):
             # Start safe deletion order to satisfy foreign key constraints
             # 1) Delete images that belong to folders owned by the user
             cur.execute(
-                "DELETE FROM images WHERE folder_id IN (SELECT id FROM folders WHERE user_id = ?)",
+                "DELETE FROM images WHERE folder_id IN (SELECT id FROM folders WHERE user_id = %s)",
                 (user_id,),
             )
 
             # 2) Delete any remaining images uploaded by the user (defensive)
-            cur.execute("DELETE FROM images WHERE user_id = ?", (user_id,))
+            cur.execute("DELETE FROM images WHERE user_id = %s", (user_id,))
 
             # 3) Remove folder_share entries where this user is owner or recipient
-            cur.execute("DELETE FROM folder_shares WHERE owner_id = ? OR shared_with_user_id = ?", (user_id, user_id))
+            cur.execute("DELETE FROM folder_shares WHERE owner_id = %s OR shared_with_user_id = %s", (user_id, user_id))
 
             # 4) Delete folders owned by the user
-            cur.execute("DELETE FROM folders WHERE user_id = ?", (user_id,))
+            cur.execute("DELETE FROM folders WHERE user_id = %s", (user_id,))
 
             # 5) Delete any sessions for the user (defensive)
-            cur.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+            cur.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
 
             # 6) Finally delete the user record
-            cur.execute("DELETE FROM users WHERE id = ?", (user_id,))
-    except sqlite3.Error as e:
+            cur.execute("DELETE FROM users WHERE id = %s", (user_id,))
+    except psycopg2.Error as e:
         raise DatabaseOperationException(
             f"Failed to delete user {user_id} and associated data",
             details={"user_id": user_id},
@@ -198,11 +228,11 @@ def add_user(user):
     try:
         with get_db_connection() as conn:
             cur = conn.cursor()
-            cur.execute("INSERT INTO users (username, password) VALUES (?, ?)", (username, hashed_password))
-            user_id = cur.lastrowid
+            cur.execute("INSERT INTO users (username, password) VALUES (%s, %s) RETURNING id", (username, hashed_password))
+            user_id = cur.fetchone()[0]
             logger.info(f"User created successfully", extra={"user_id": user_id, "username": username})
             return user_id
-    except sqlite3.IntegrityError as e:
+    except psycopg2.IntegrityError as e:
         logger.warning(f"Failed to create user - username already exists", extra={"username": username})
         raise DuplicateRecordException("User", "username", username, original_exception=e)
 
@@ -216,29 +246,35 @@ def get_user_by_username_and_password(username, password):
 def get_user_by_username(username):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE username = ?", (username, ))
+        cur.execute("SELECT * FROM users WHERE username = %s", (username, ))
         return cur.fetchone()
 
 def get_user_by_id(user_id):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT * FROM users WHERE id = ?", (user_id,))
+        cur.execute("SELECT * FROM users WHERE id = %s", (user_id,))
         return cur.fetchone()
 
 
 def create_session_record(token: str, user_id: int, expires_at: datetime) -> None:
     with get_db_connection() as conn:
         cur = conn.cursor()
+        # PostgreSQL uses ON CONFLICT for upsert operations
         cur.execute(
-            "INSERT OR REPLACE INTO sessions (token, user_id, expires_at, last_seen) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
-            (token, user_id, expires_at.astimezone(timezone.utc).isoformat()),
+            """INSERT INTO sessions (token, user_id, expires_at, last_seen)
+               VALUES (%s, %s, %s, CURRENT_TIMESTAMP)
+               ON CONFLICT (token) DO UPDATE SET
+               user_id = EXCLUDED.user_id,
+               expires_at = EXCLUDED.expires_at,
+               last_seen = CURRENT_TIMESTAMP""",
+            (token, user_id, expires_at.astimezone(timezone.utc)),
         )
 
 
 def get_session_record(token: str) -> Optional[Dict[str, Any]]:
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT user_id, expires_at FROM sessions WHERE token = ?", (token,))
+        cur.execute("SELECT user_id, expires_at FROM sessions WHERE token = %s", (token,))
         row = cur.fetchone()
         if not row:
             return None
@@ -249,68 +285,68 @@ def refresh_session_expiry(token: str, new_expires_at: datetime) -> None:
     with get_db_connection() as conn:
         cur = conn.cursor()
         cur.execute(
-            "UPDATE sessions SET expires_at = ?, last_seen = CURRENT_TIMESTAMP WHERE token = ?",
-            (new_expires_at.astimezone(timezone.utc).isoformat(), token),
+            "UPDATE sessions SET expires_at = %s, last_seen = CURRENT_TIMESTAMP WHERE token = %s",
+            (new_expires_at.astimezone(timezone.utc), token),
         )
 
 
 def delete_session_record(token: str) -> None:
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM sessions WHERE token = ?", (token,))
+        cur.execute("DELETE FROM sessions WHERE token = %s", (token,))
 
 
 def delete_sessions_for_user(user_id: int) -> None:
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("DELETE FROM sessions WHERE user_id = ?", (user_id,))
+        cur.execute("DELETE FROM sessions WHERE user_id = %s", (user_id,))
 
 
 def cleanup_expired_sessions(reference: Optional[datetime] = None) -> None:
     with get_db_connection() as conn:
         cur = conn.cursor()
-        now = (reference or datetime.now(timezone.utc)).astimezone(timezone.utc).isoformat()
-        cur.execute("DELETE FROM sessions WHERE expires_at <= ?", (now,))
+        now = (reference or datetime.now(timezone.utc)).astimezone(timezone.utc)
+        cur.execute("DELETE FROM sessions WHERE expires_at <= %s", (now,))
 
     
 def add_folder(user_id, folder_name):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("INSERT INTO folders (user_id, folder_name) VALUES (?, ?)", (user_id, folder_name))
-        return cur.lastrowid
-    
+        cur.execute("INSERT INTO folders (user_id, folder_name) VALUES (%s, %s) RETURNING id", (user_id, folder_name))
+        return cur.fetchone()[0]
+
 def add_image_to_images(user_id, filepath, folder_id):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("INSERT INTO images (user_id, filepath, folder_id) VALUES (?, ?, ?)",
+        cur.execute("INSERT INTO images (user_id, filepath, folder_id) VALUES (%s, %s, %s) RETURNING id",
                     (user_id, filepath, folder_id))
-        return cur.lastrowid
+        return cur.fetchone()[0]
 
 def get_user_images(user_id):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT filepath FROM images WHERE user_id = ?", (user_id,))
+        cur.execute("SELECT filepath FROM images WHERE user_id = %s", (user_id,))
         rows = cur.fetchall()
         return [r[0] for r in rows]
 
 def get_folders_by_user_id(user_id):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id, folder_name FROM folders WHERE user_id = ?", (user_id,))
+        cur.execute("SELECT id, folder_name FROM folders WHERE user_id = %s", (user_id,))
         rows = cur.fetchall()
         return [{"id": row[0], "folder_name": row[1]} for row in rows]
 
 def get_folders_by_user_id_and_folder_name(user_id, folder_name):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT id FROM folders WHERE user_id = ? AND folder_name = ?", (user_id, folder_name))
+        cur.execute("SELECT id FROM folders WHERE user_id = %s AND folder_name = %s", (user_id, folder_name))
         row = cur.fetchone()
         return row[0] if row else None
 
 def get_image_path_by_image_id(image_id):
     with get_db_connection() as conn:
         cur = conn.cursor()
-        cur.execute("SELECT filepath FROM images WHERE id = ?", (int(image_id),))
+        cur.execute("SELECT filepath FROM images WHERE id = %s", (int(image_id),))
         row = cur.fetchone()
         return row[0] if row else None
 
@@ -338,10 +374,10 @@ def share_folder_with_user(folder_id: int, owner_id: int, shared_with_username: 
             cur = conn.cursor()
             cur.execute("""
                 INSERT INTO folder_shares (folder_id, owner_id, shared_with_user_id, permission)
-                VALUES (?, ?, ?, ?)
+                VALUES (%s, %s, %s, %s) RETURNING id
             """, (folder_id, owner_id, shared_with_user_id, permission))
-            return cur.lastrowid
-    except sqlite3.IntegrityError as e:
+            return cur.fetchone()[0]
+    except psycopg2.IntegrityError as e:
         raise DuplicateRecordException(
             "FolderShare",
             "folder_id+shared_with_user_id",
@@ -365,8 +401,23 @@ def revoke_folder_share(folder_id: int, owner_id: int, shared_with_username: str
         cur = conn.cursor()
         cur.execute("""
             DELETE FROM folder_shares
-            WHERE folder_id = ? AND owner_id = ? AND shared_with_user_id = ?
+            WHERE folder_id = %s AND owner_id = %s AND shared_with_user_id = %s
         """, (folder_id, owner_id, shared_with_user_id))
+        return cur.rowcount > 0
+
+
+def remove_folder_share_for_user(folder_id: int, user_id: int):
+    """
+    Remove a folder share for a specific user (when they want to "delete" a shared folder).
+    This removes the folder from their view without actually deleting it.
+    Returns True if successful, False if share didn't exist.
+    """
+    with get_db_connection() as conn:
+        cur = conn.cursor()
+        cur.execute("""
+            DELETE FROM folder_shares
+            WHERE folder_id = %s AND shared_with_user_id = %s
+        """, (folder_id, user_id))
         return cur.rowcount > 0
 
 
@@ -388,7 +439,7 @@ def get_folders_shared_with_user(user_id: int):
             FROM folder_shares fs
             JOIN folders f ON fs.folder_id = f.id
             JOIN users u ON f.user_id = u.id
-            WHERE fs.shared_with_user_id = ?
+            WHERE fs.shared_with_user_id = %s
             ORDER BY fs.created_at DESC
         """, (user_id,))
         rows = cur.fetchall()
@@ -399,7 +450,7 @@ def get_folders_shared_with_user(user_id: int):
             "owner_id": row[2],
             "owner_username": row[3],
             "permission": row[4],
-            "shared_at": row[5],
+            "shared_at": row[5].isoformat() if row[5] else None,  # Convert datetime to string
             "is_shared": True
         } for row in rows]
 
@@ -421,7 +472,7 @@ def get_folders_shared_by_user(user_id: int):
             FROM folder_shares fs
             JOIN folders f ON fs.folder_id = f.id
             JOIN users u ON fs.shared_with_user_id = u.id
-            WHERE fs.owner_id = ?
+            WHERE fs.owner_id = %s
             ORDER BY f.folder_name, fs.created_at DESC
         """, (user_id,))
         rows = cur.fetchall()
@@ -453,7 +504,7 @@ def check_folder_access(user_id: int, folder_id: int):
         cur = conn.cursor()
 
         # Check if user owns the folder
-        cur.execute("SELECT id, folder_name, user_id FROM folders WHERE id = ? AND user_id = ?", (folder_id, user_id))
+        cur.execute("SELECT id, folder_name, user_id FROM folders WHERE id = %s AND user_id = %s", (folder_id, user_id))
         row = cur.fetchone()
         if row:
             return {
@@ -469,7 +520,7 @@ def check_folder_access(user_id: int, folder_id: int):
             SELECT fs.permission, f.folder_name, f.user_id
             FROM folder_shares fs
             JOIN folders f ON fs.folder_id = f.id
-            WHERE fs.folder_id = ? AND fs.shared_with_user_id = ?
+            WHERE fs.folder_id = %s AND fs.shared_with_user_id = %s
         """, (folder_id, user_id))
         row = cur.fetchone()
 

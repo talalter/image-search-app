@@ -15,13 +15,12 @@ from exceptions import InvalidCredentialsException, StorageException
 router = APIRouter()
 faiss_manager = FaissManager()
 
-# demoapi.py
 
-@router.get("/")
+@router.get("/api")
 def read_root():
     return {"message": "Welcome to the User API"}
     
-@router.post("/register", response_model=UserOut)
+@router.post("/api/users/register", response_model=UserOut)
 def register(user: UserIn):
     """
     Register a new user account.
@@ -42,7 +41,7 @@ def register(user: UserIn):
         print(f"[WARNING] Failed to create FAISS folder for user {user_id}: {e}")
     return {"id": user_id, "username": user.username}
 
-@router.post("/login", response_model=LoginResponse)
+@router.post("/api/users/login", response_model=LoginResponse)
 def login(payload: UserIn):
     """
     Authenticate user and create session.
@@ -86,18 +85,18 @@ def login(payload: UserIn):
     )
 
 
-@router.post("/logout")
+@router.post("/api/users/logout")
 def logout(token: str = Body(..., embed=True)):
     try:
         get_user_id_from_token(token)
     except Exception:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     invalidate_session(token)
     return {"message": "Logout successful"}
 
 
-@router.delete("/delete-account")
+@router.delete("/api/users/delete")
 def delete_account(token: str = Body(..., embed=True)):
     """
     Delete the authenticated user's account.

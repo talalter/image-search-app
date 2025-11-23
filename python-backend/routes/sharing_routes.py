@@ -29,7 +29,7 @@ class RevokeFolderShareRequest(BaseModel):
     username: str
 
 
-@router.post("/share-folder")
+@router.post("/api/folders/share")
 def share_folder(request: ShareFolderRequest):
     """
     Share a folder with another user by username.
@@ -39,18 +39,18 @@ def share_folder(request: ShareFolderRequest):
     owner_id = get_user_id_from_token(request.token)
     if not owner_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     # Verify the user owns this folder
     user_folders = get_folders_by_user_id(owner_id)
     folder_ids = [f["id"] for f in user_folders]
-    
+
     if request.folder_id not in folder_ids:
         raise HTTPException(status_code=403, detail="You don't own this folder")
-    
+
     # Validate permission
     if request.permission not in ["view", "edit"]:
         raise HTTPException(status_code=400, detail="Permission must be 'view' or 'edit'")
-    
+
     try:
         share_id = share_folder_with_user(
             request.folder_id,
@@ -92,7 +92,7 @@ def revoke_share(request: RevokeFolderShareRequest):
         raise HTTPException(status_code=404, detail=f"No share found with {request.username}")
 
 
-@router.get("/folders-shared-with-me")
+@router.get("/api/folders/shared")
 def get_shared_with_me(token: str):
     """
     Get all folders that have been shared with the current user.
@@ -100,7 +100,7 @@ def get_shared_with_me(token: str):
     user_id = get_user_id_from_token(token)
     if not user_id:
         raise HTTPException(status_code=401, detail="Invalid token")
-    
+
     shared_folders = get_folders_shared_with_user(user_id)
     return {"folders": shared_folders}
 

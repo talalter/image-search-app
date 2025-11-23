@@ -56,54 +56,70 @@ def process_images_background(user_id: int, folder_id: int, image_paths: List[tu
     
 
 
-@router.delete("/delete-folders")
+@router.delete("/api/folders")
 async def delete_folder(request: FolderDeleteRequest = Body(...)):
     """
-    Delete folders and all associated resources.
-    
-    This endpoint handles complete folder deletion:
-    1. Database records (folders + images tables)
-    2. Physical image files from filesystem
-    3. FAISS vector index
+    Delete folders or remove shares.
+
+    Behavior:
+    - If user owns the folder: Complete deletion (files, database, FAISS)
+    - If folder is shared with user: Remove the share (unshare from their view)
     """
-    print(f"[DELETE] Received delete request for folders: {request.folder_ids}")
     user_id = get_user_id_from_token(request.token)
-    print(f"[DELETE] User ID: {user_id}")
     if not user_id:
         raise HTTPException(status_code=404, detail="User not found")
-    
+
+    from database import check_folder_access, remove_folder_share_for_user
+
+    deleted_count = 0
+    unshared_count = 0
+
     for folder_id in request.folder_ids:
-        print(f"[DELETE] Deleting folder_id={folder_id} for user_id={user_id}")
-        
+        # Check if user has access and what kind of access
+        access = check_folder_access(user_id, folder_id)
+
+        if not access:
+            raise HTTPException(status_code=403, detail=f"You don't have access to folder {folder_id}")
+
         try:
-            # 1. Delete database records (folders and images)
-            # This will CASCADE delete folder_shares automatically
-            delete_folder_by_id(folder_id, user_id)
-            print(f"[DELETE] Database records deleted")
-            
-            # 2. Delete physical image files from filesystem
-            folder_path = os.path.join("images", str(user_id), str(folder_id))
-            if os.path.exists(folder_path):
-                shutil.rmtree(folder_path)
-                print(f"[DELETE] Deleted folder path: {folder_path}")
+            if access["is_owner"]:
+                # User owns the folder - delete completely
+                # 1. Delete database records (folders and images)
+                # This will CASCADE delete folder_shares automatically
+                delete_folder_by_id(folder_id, user_id)
+
+                # 2. Delete physical image files from filesystem
+                # Use parent directory (project root) for shared images directory
+                base_dir = os.path.dirname(os.getcwd())
+                folder_path = os.path.join(base_dir, "images", str(user_id), str(folder_id))
+                if os.path.exists(folder_path):
+                    shutil.rmtree(folder_path)
+
+                # 3. Delete FAISS vector index
+                faiss_manager.delete_faiss_index(user_id, folder_id)
+                deleted_count += 1
             else:
-                print(f"[DELETE] Folder path doesn't exist: {folder_path}")
-            
-            # 3. Delete FAISS vector index
-            faiss_manager.delete_faiss_index(user_id, folder_id)
-            print(f"[DELETE] FAISS index deleted")
+                # Folder is shared with user - just remove the share
+                remove_folder_share_for_user(folder_id, user_id)
+                unshared_count += 1
+
         except ValueError as e:
             # Folder not found or permission denied
             raise HTTPException(status_code=403, detail=str(e))
         except Exception as e:
             # Other errors (database, filesystem, FAISS)
-            print(f"[DELETE] Error deleting folder {folder_id}: {e}")
-            raise HTTPException(status_code=500, detail=f"Failed to delete folder {folder_id}: {str(e)}")
-    
-    print(f"[DELETE] Successfully deleted {len(request.folder_ids)} folder(s)")
-    return {"message": f"Successfully deleted {len(request.folder_ids)} folder(s)"}
+            raise HTTPException(status_code=500, detail=f"Failed to process folder {folder_id}: {str(e)}")
 
-@router.post("/upload-images", response_model=UploadImagesResponse)
+    # Build response message
+    messages = []
+    if deleted_count > 0:
+        messages.append(f"deleted {deleted_count} folder(s)")
+    if unshared_count > 0:
+        messages.append(f"removed {unshared_count} shared folder(s)")
+
+    return {"message": f"Successfully {' and '.join(messages)}"}
+
+@router.post("/api/images/upload", response_model=UploadImagesResponse)
 async def upload_multiple_images(
     background_tasks: BackgroundTasks,
     token: str = Form(...),
@@ -175,7 +191,7 @@ async def upload_multiple_images(
     )
 
 
-@router.get("/search-images", response_model=SearchImageResponse)
+@router.get("/api/images/search", response_model=SearchImageResponse)
 def search_images(params: SearchImageRequest = Depends()):
     """
     Search for images using text query.
@@ -239,11 +255,11 @@ def search_images(params: SearchImageRequest = Depends()):
     return SearchImageResponse(results=results)  
 
 
-@router.get("/get-folders", response_model=CombinedFoldersResponse)
+@router.get("/api/folders", response_model=CombinedFoldersResponse)
 def get_folders(token: str):
     """
     Get all folders for a user (owned + shared with them).
-    
+
     Why use response_model?
     - Automatically validates the response structure
     - Generates OpenAPI documentation

@@ -29,7 +29,8 @@ def upload_folder_to_bucket(file, key, upload_type='folder'):
 
 
 def upload_folder_to_local(file, key, upload_type='folder'):
-    base_folder = os.getcwd()
+    # Use parent directory (project root) instead of current working directory
+    base_folder = os.path.dirname(os.getcwd())
     folder_path = os.path.join(base_folder, key)
 
     os.makedirs(os.path.dirname(folder_path), exist_ok=True)
@@ -58,7 +59,11 @@ def generate_presigned_url(s3_key: str, bucket_name=BUCKET_NAME, expiration=60) 
 
 def get_path_to_save(key:str):
     if storage_backend == 'local':
-        return key
+        # Return absolute URL so it works regardless of frontend configuration
+        # Frontend might be configured for Java (port 8080) but images are on Python (port 8000)
+        base_url = os.getenv("BASE_URL", "http://localhost:8000")
+        path = f"/{key}" if not key.startswith("/") else key
+        return f"{base_url}{path}"
     elif storage_backend == 'aws':
         return generate_presigned_url(s3_key=key)
 

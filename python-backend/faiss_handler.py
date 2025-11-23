@@ -3,11 +3,29 @@ import numpy as np
 import os
 from utils import embed_text
 import heapq
+import logging
+import threading
+
+# Suppress FAISS GPU-related info messages
+logging.getLogger('faiss').setLevel(logging.WARNING)
+
 FAISS_FOLDER: str = "faisses_indexes"
+
 class FaissManager:
     def __init__(self, base_folder: str = FAISS_FOLDER):
         self.base_folder = base_folder
         os.makedirs(self.base_folder, exist_ok=True)
+        # Thread lock for thread-safe FAISS operations
+        self._locks = {}
+        self._locks_lock = threading.Lock()
+
+    def _get_lock(self, user_id: int, folder_id: int) -> threading.Lock:
+        """Get or create a lock for a specific FAISS index."""
+        key = (user_id, folder_id)
+        with self._locks_lock:
+            if key not in self._locks:
+                self._locks[key] = threading.Lock()
+            return self._locks[key]
 
 
     def create_user_faiss_folder(self, user_id: int):
@@ -42,12 +60,15 @@ class FaissManager:
         index_path = self._get_folder_path(user_id, folder_id)
         if not os.path.exists(index_path):
             raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
-        
-        index = faiss.read_index(index_path)
-        vector = np.array(vector, dtype='float32').reshape(1, -1)
-        vector = self._normalize(vector)
-        index.add_with_ids(vector, np.array([vector_id], dtype='int64'))
-        faiss.write_index(index, index_path)    
+
+        # Use lock to prevent concurrent read/write to the same index
+        lock = self._get_lock(user_id, folder_id)
+        with lock:
+            index = faiss.read_index(index_path)
+            vector = np.array(vector, dtype='float32').reshape(1, -1)
+            vector = self._normalize(vector)
+            index.add_with_ids(vector, np.array([vector_id], dtype='int64'))
+            faiss.write_index(index, index_path)    
 
 
 

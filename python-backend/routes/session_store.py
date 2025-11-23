@@ -33,7 +33,15 @@ def get_user_id_from_token(token: str) -> int:
     session = get_session_record(token)
     if not session:
         raise Exception("Invalid or expired token")
-    expires_at = ensure_utc(datetime.fromisoformat(session["expires_at"]))
+
+    # Handle expires_at - could be datetime object or string depending on database driver
+    expires_at = session["expires_at"]
+    if isinstance(expires_at, str):
+        expires_at = ensure_utc(datetime.fromisoformat(expires_at))
+    else:
+        # Already a datetime object from PostgreSQL
+        expires_at = ensure_utc(expires_at)
+
     if expires_at <= _now():
         delete_session_record(token)
         raise Exception("Invalid or expired token")
