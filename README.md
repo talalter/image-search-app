@@ -1,21 +1,24 @@
 # 🔍 Image Search Application
 
-Semantic image search using CLIP embeddings and FAISS vector similarity. Upload images, create folders, and search using natural language queries to find visually similar images.
+Enterprise-grade semantic image search application with microservices architecture. Upload images, create folders, and search using natural language queries powered by AI.
 
+[![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.java.com/)
+[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green.svg)](https://spring.io/projects/spring-boot)
 [![Python](https://img.shields.io/badge/Python-3.12-blue.svg)](https://www.python.org/)
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.104-009688.svg)](https://fastapi.tiangolo.com/)
-[![Docker](https://img.shields.io/badge/Docker-Ready-2496ed.svg)](https://www.docker.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
 
 ## Key Highlights
 
+- **Microservices Architecture**: Java Spring Boot backend orchestrating Python AI microservice
+- **RESTful API Design**: Clean, resource-based endpoints following REST principles
 - **AI-Powered Search**: OpenAI CLIP model generates 512-dimensional embeddings for semantic understanding
 - **Lightning-Fast Search**: FAISS IndexFlatIP performs cosine similarity search on millions of vectors
-- **Cloud-Ready Storage**: Seamlessly switch between local filesystem and AWS S3 with presigned URLs
-- **Production-Ready**: Docker + Nginx deployment with multi-stage builds and health checks
-- **Enterprise Security**: PBKDF2-HMAC-SHA256 (390k iterations) + session tokens with auto-refresh
-- **Multi-Tenant Platform**: Complete user isolation with granular folder sharing (view/edit permissions)
-- **Full-Stack Modern**: React SPA + FastAPI backend + SQLite with foreign key constraints
+- **Production Database**: PostgreSQL with JPA/Hibernate ORM and proper transaction management
+- **Enterprise Security**: BCrypt password hashing + session-based authentication with sliding expiration
+- **Layered Architecture**: Clear separation of concerns (Controller → Service → Repository → Entity)
+- **Global Exception Handling**: Centralized error handling with @ControllerAdvice (similar to Spring's best practices)
+- **Multi-Tenant Platform**: Complete user isolation with granular folder sharing permissions
 
 ## Features
 
@@ -27,77 +30,245 @@ Semantic image search using CLIP embeddings and FAISS vector similarity. Upload 
 
 ## Architecture
 
-### High-Level Overview
+### Microservices Architecture
+
+This application demonstrates a **professional microservices architecture** with clear separation of concerns:
+
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   React SPA     │◄──►│   FastAPI + Nginx│◄──►│   CLIP Model    │
-│   (Frontend)    │    │    (Backend)     │    │  (ViT-B/32)     │
-└─────────────────┘    └──────────┬───────┘    └─────────────────┘
-                                  │
-                    ┌─────────────┼─────────────┐
-                    ▼             ▼             ▼
-            ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
-            │   SQLite    │ │    FAISS    │ │   Storage   │
-            │ (metadata)  │ │ (vectors)   │ │ (AWS S3 /   │
-            │             │ │             │ │  Local FS)  │
-            └─────────────┘ └─────────────┘ └─────────────┘
+┌─────────────────────┐
+│   React Frontend    │  Port 3000
+│   (User Interface)  │
+└──────────┬──────────┘
+           │ HTTP REST
+           ▼
+┌─────────────────────┐
+│   Java Backend      │  Port 8080
+│   (Spring Boot)     │
+│                     │
+│  ┌───────────────┐  │
+│  │ Controllers   │  │  RESTful API Layer
+│  ├───────────────┤  │
+│  │ Services      │  │  Business Logic
+│  ├───────────────┤  │
+│  │ Repositories  │  │  Data Access
+│  ├───────────────┤  │
+│  │ Entities      │  │  JPA Models
+│  └───────────────┘  │
+└──────┬────────┬─────┘
+       │        │
+       │        │ HTTP (WebClient)
+       │        ▼
+       │   ┌─────────────────────┐
+       │   │ Python Search       │  Port 5000
+       │   │ Microservice        │
+       │   │                     │
+       │   │ • CLIP Embeddings   │
+       │   │ • FAISS Search      │
+       │   │ • Vector Indexing   │
+       │   └─────────────────────┘
+       │
+       ▼
+┌──────────────┐
+│ PostgreSQL   │  Port 5432
+│              │
+│ • Users      │
+│ • Folders    │
+│ • Images     │
+│ • Sessions   │
+│ • Shares     │
+└──────────────┘
 ```
 
+### Technology Stack
 
-## Quick Start with Docker
+#### **Java Backend (Spring Boot)**
+- **Framework**: Spring Boot 3.2, Spring Data JPA, Spring WebClient
+- **Build Tool**: Gradle 8.5
+- **Language**: Java 17
+- **Database**: PostgreSQL 15 with Hibernate ORM
+- **Security**: BCrypt password hashing, session-based authentication
+- **Architecture**: Layered (Controller → Service → Repository → Entity)
+
+**Responsibilities:**
+- User authentication and session management
+- Folder and image metadata management
+- Authorization and access control
+- HTTP orchestration with Python microservice
+- RESTful API for React frontend
+
+#### **Python Search Microservice (FastAPI)**
+- **Framework**: FastAPI 0.104
+- **AI Model**: OpenAI CLIP (ViT-B/32)
+- **Vector Search**: FAISS (Facebook AI Similarity Search)
+- **ML Framework**: PyTorch 2.1
+
+**Responsibilities:**
+- Generate CLIP embeddings for images and text
+- Manage FAISS vector indexes
+- Perform semantic similarity search
+- Return ranked image IDs with scores
+
+#### **React Frontend**
+- **Framework**: React 18 with functional components
+- **Styling**: Modern CSS with responsive design
+- **API Communication**: Fetch API with centralized error handling
+
+**Responsibilities:**
+- User interface and experience
+- Form validation and file upload
+- API calls to Java backend (NOT Python service)
+
+
+## Quick Start (Local Development)
+
+> 📌 **See [HOW_TO_SWITCH_BACKENDS.md](HOW_TO_SWITCH_BACKENDS.md) for complete switching guide**
+>
+> 📌 **See [PORTS_AND_ARCHITECTURE.md](PORTS_AND_ARCHITECTURE.md) for port configuration details**
 
 ### Prerequisites
-- Docker & Docker Compose installed ([Get Docker](https://docs.docker.com/get-docker/))
-- 4GB+ RAM available (CLIP model requires ~2GB)
+- **Java 17+** ([Download OpenJDK](https://adoptium.net/))
+- **PostgreSQL 15+** ([Installation guide](POSTGRESQL_SETUP.md))
+- **Python 3.12+** with pip
+- **Node.js 18+** with npm
+- 4GB+ RAM (CLIP model requires ~2GB)
 
-### Run the Application
+### 1. Database Setup
 
 ```bash
-# Clone the repository
-git clone https://github.com/talalter/image-search-app.git
-cd image-search-app
+# Install and start PostgreSQL (see POSTGRESQL_SETUP.md for details)
+sudo apt install postgresql  # Ubuntu/Debian
+# or
+brew install postgresql@15   # macOS
 
-# Build and start containers (first time takes ~5 minutes)
-docker-compose up --build
-
-# Access the application
-# Frontend: http://localhost:3000
-# Backend API: http://localhost:9999
-# API Docs: http://localhost:9999/docs
+# Create database
+sudo -u postgres psql
+CREATE DATABASE imagesearch;
+CREATE USER imageuser WITH PASSWORD 'your_password';
+GRANT ALL PRIVILEGES ON DATABASE imagesearch TO imageuser;
+\q
 ```
 
-**That's it!** The app will:
-1. Build frontend and backend images (~5 minutes first time)
-2. Start both services with networking configured
-3. Create persistent volumes for data
-4. Be accessible at http://localhost:3000
+### 2. Python Search Microservice
 
-### Stop the Application
 ```bash
-docker-compose down
-```
+# Navigate to search service
+cd search-service
 
-### View Logs
-```bash
-docker-compose logs -f backend
-docker-compose logs -f frontend
-```
-
-## Local Development Setup
-
-### Backend Setup
-```bash
 # Create virtual environment
-python3 -m venv talenv
-source talenv/bin/activate
+python3 -m venv venv
+source venv/bin/activate  # or `venv\Scripts\activate` on Windows
 
-# Install dependencies
+# Install dependencies (includes CLIP, FAISS, PyTorch)
 pip install -r requirements.txt
 
-# Run backend
-cd backend
-uvicorn api:app --reload --port 9999
+# Start the service (runs on port 5000)
+python app.py
 ```
+
+### 3. Java Backend
+
+```bash
+# Navigate to Java backend
+cd java-backend
+
+# Configure database (edit src/main/resources/application.yml)
+# Or use environment variables:
+export DB_USERNAME=imageuser
+export DB_PASSWORD=your_password
+
+# Run with Gradle
+./gradlew bootRun
+
+# Backend will start on port 8080
+```
+
+### 4. React Frontend
+
+```bash
+# Navigate to frontend
+cd frontend
+
+# Install dependencies
+npm install
+
+# Start development server (runs on port 3000)
+npm start
+```
+
+### 5. Access the Application
+
+- **Frontend**: http://localhost:3000
+- **Java Backend API**: http://localhost:8080
+- **Python Search Service**: http://localhost:5000
+
+## How It Works
+
+### 1. User Registration/Login
+```
+React → POST /api/users/register → Java Backend
+                                   ↓
+                                PostgreSQL (users table)
+                                   ↓
+                          ← BCrypt hashed password
+                          ← Session token created
+```
+
+### 2. Image Upload Flow
+```
+React → POST /api/images/upload → Java Backend
+         (multipart/form-data)      ↓
+                                    Save to filesystem
+                                    Create DB record (PostgreSQL)
+                                    ↓
+                            POST /embed-images → Python Service
+                                                  ↓
+                                            Generate CLIP embedding
+                                            Add to FAISS index
+```
+
+### 3. Image Search Flow
+```
+React → GET /api/images/search?query=sunset → Java Backend
+                                                  ↓
+                                          Get accessible folders (PostgreSQL)
+                                          Build folder ownership map
+                                                  ↓
+                                          POST /search → Python Service
+                                                         ↓
+                                                   CLIP text embedding
+                                                   FAISS similarity search
+                                                   ← Return image IDs + scores
+                                          ← Enrich with metadata
+                                          ← Image URLs + scores
+React ← JSON response with results
+```
+
+## API Documentation
+
+### Java Backend Endpoints
+
+#### **User Management**
+- `POST /api/users/register` - Create new user account
+- `POST /api/users/login` - Authenticate and get session token
+- `POST /api/users/logout` - Invalidate session
+- `DELETE /api/users/account` - Delete user account
+
+#### **Folder Management**
+- `GET /api/folders?token=xxx` - Get all accessible folders
+- `DELETE /api/folders` - Delete folders (with DB + FAISS cleanup)
+- `POST /api/folders/share` - Share folder with another user
+- `GET /api/folders/shared?token=xxx` - Get folders shared with me
+
+#### **Image Operations**
+- `POST /api/images/upload` - Upload images to folder
+- `GET /api/images/search?query=xxx&token=xxx` - Semantic search
+
+### Python Microservice Endpoints (Internal - called by Java)
+
+- `POST /search` - Perform FAISS similarity search
+- `POST /embed-images` - Generate embeddings for uploaded images
+- `POST /create-index` - Create new FAISS index for folder
+- `DELETE /delete-index/{user_id}/{folder_id}` - Delete FAISS index
 
 ### Frontend Setup
 ```bash
@@ -137,9 +308,9 @@ npm start  # Runs on port 3000, proxies API to :9999
 
 ```
 image-search-app/
-├── backend/
+├── python-backend/
 │   ├── api.py                  # FastAPI app entry point
-│   ├── database.py             # SQLite operations
+│   ├── database.py             # PostgreSQL operations
 │   ├── faiss_handler.py        # FAISS index management
 │   ├── utils.py                # CLIP embedding generation
 │   ├── security.py             # Password hashing
@@ -149,8 +320,19 @@ image-search-app/
 │   │   └── sharing_routes.py   # Folder sharing
 │   ├── images/                 # Uploaded images (volume)
 │   ├── faisses_indexes/        # FAISS indexes (volume)
-│   ├── database.sqlite         # SQLite database (volume)
 │   └── Dockerfile
+│
+├── java-backend/
+│   ├── src/main/java/com/imagesearch/
+│   │   ├── controller/         # REST endpoints
+│   │   ├── service/            # Business logic
+│   │   ├── repository/         # Data access (JPA)
+│   │   ├── model/              # Entities and DTOs
+│   │   └── client/             # Microservice clients
+│   └── build.gradle            # Gradle build config
+│
+├── search-service/
+│   └── app.py                  # Python search microservice
 │
 ├── frontend/
 │   ├── src/
