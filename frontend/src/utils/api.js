@@ -1,24 +1,53 @@
 /**
  * API Utility Layer
- * 
+ *
  * Centralized API communication with:
  * - Consistent error handling
  * - Type documentation via JSDoc
  * - Reusable request logic
+ * - Support for BOTH Java and Python backends
  */
 
-// API Endpoints - Single source of truth
+/**
+ * Backend Configuration
+ *
+ * Set REACT_APP_BACKEND environment variable to choose backend:
+ * - 'java' → Java Spring Boot backend (port 8080) - DEFAULT
+ * - 'python' → Python FastAPI backend (port 8000)
+ *
+ * Both backends use the same RESTful endpoints (e.g., /api/users/login)
+ *
+ * To switch backends:
+ * export REACT_APP_BACKEND=python && npm start
+ * or
+ * REACT_APP_BACKEND=python npm start
+ */
+const BACKEND = process.env.REACT_APP_BACKEND || 'java';
+
+// Backend configuration - uses absolute URLs for both Java and Python backends
+// Switch backends using environment variable:
+//   REACT_APP_BACKEND=java npm start   (default - port 8080)
+//   REACT_APP_BACKEND=python npm start (port 8000)
+const API_BASE_URL = BACKEND === 'python'
+  ? 'http://localhost:8000'   // Python FastAPI backend
+  : 'http://localhost:8080';  // Java Spring Boot backend
+
+console.log(`🔌 Using ${BACKEND.toUpperCase()} backend at ${API_BASE_URL}`);
+
+// API Endpoints - RESTful paths that work with BOTH backends
 export const API_ENDPOINTS = {
-  LOGIN: '/login',
-  REGISTER: '/register',
-  LOGOUT: '/logout',
-  UPLOAD_IMAGES: '/upload-images',
-  SEARCH_IMAGES: '/search-images',
-  GET_FOLDERS: '/get-folders',
-  DELETE_FOLDERS: '/delete-folders',
-  DELETE_ACCOUNT: '/delete-account',
-  FOLDERS_SHARED_WITH_ME: '/folders-shared-with-me',
-  SHARE_FOLDER: '/share-folder',
+  LOGIN: `${API_BASE_URL}/api/users/login`,
+  REGISTER: `${API_BASE_URL}/api/users/register`,
+  LOGOUT: `${API_BASE_URL}/api/users/logout`,
+  // Backend expects DELETE on /api/users/account
+  DELETE_ACCOUNT: `${API_BASE_URL}/api/users/delete`,
+  UPLOAD_IMAGES: `${API_BASE_URL}/api/images/upload`,
+  SEARCH_IMAGES: `${API_BASE_URL}/api/images/search`,
+  GET_FOLDERS: `${API_BASE_URL}/api/folders`,
+  DELETE_FOLDERS: `${API_BASE_URL}/api/folders`,
+  FOLDERS_SHARED_WITH_ME: `${API_BASE_URL}/api/folders/shared`,
+  SHARE_FOLDER: `${API_BASE_URL}/api/folders/share`,
+  // Deprecated endpoints (not implemented in Java backend yet)
   PUBLIC_FOLDERS: '/public-folders',
   TOGGLE_PUBLIC: '/toggle-public',
   GENERATE_SHARE_LINK: '/generate-share-link',
@@ -55,14 +84,27 @@ export class APIError extends Error {
 async function apiRequest(url, options = {}) {
   try {
     const response = await fetch(url, options);
-    const data = await response.json();
+
+    // Try to parse JSON, but fall back to plain text when not JSON
+    let data = null;
+    try {
+      data = await response.json();
+    } catch (jsonErr) {
+      // not JSON - read raw text
+      try {
+        const text = await response.text();
+        data = text;
+      } catch (txtErr) {
+        data = null;
+      }
+    }
 
     if (!response.ok) {
-      throw new APIError(
-        data.detail || 'Request failed',
-        response.status,
-        data
-      );
+      // Prefer structured message when available
+      const message = (data && typeof data === 'object' && (data.detail || data.message))
+        || (typeof data === 'string' && data)
+        || 'Request failed';
+      throw new APIError(message, response.status, data);
     }
 
     return data;
@@ -71,11 +113,7 @@ async function apiRequest(url, options = {}) {
       throw error;
     }
     // Network errors or JSON parse errors
-    throw new APIError(
-      error.message || 'Network error',
-      0,
-      { originalError: error }
-    );
+    throw new APIError(error.message || 'Network error', 0, { originalError: error });
   }
 }
 
@@ -154,7 +192,10 @@ export async function getFoldersSharedWithMe() {
   return apiRequest(`${API_ENDPOINTS.FOLDERS_SHARED_WITH_ME}?${params.toString()}`, { method: 'GET' });
 }
 
-/** Share a folder by id with username */
+/**
+ * Share a folder by id with username
+ * @param {object} payload - { token, folderId, targetUsername, permission }
+ */
 export async function shareFolder(payload) {
   return post(API_ENDPOINTS.SHARE_FOLDER, payload);
 }
