@@ -25,7 +25,7 @@ function SearchImage({ selectedFolderIds }) {
   const handleClear = useCallback(() => {
     setResults([]);
     setQuery('');
-    setTopK(topK);
+    setTopK(1);
     setError('');
   }, []);
 

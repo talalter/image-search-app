@@ -23,7 +23,7 @@ function Register({ onRegisterSuccess }) {
     setLoading(true);
 
     try {
-      const data = await registerUser(username, password);
+      await registerUser(username, password);
 
       // Account created! Now automatically log them in
       setMessage(`Account created! Logging you in...`);

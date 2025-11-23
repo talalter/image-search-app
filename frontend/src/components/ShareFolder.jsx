@@ -48,7 +48,7 @@ function ShareFolder({ onClose, inline = false }) {
 
     try {
       const token = localStorage.getItem('token');
-      const data = await shareFolder({ token, folder_id: parseInt(selectedFolder), username: username.trim(), permission });
+      await shareFolder({ token, folder_id: parseInt(selectedFolder), username: username.trim(), permission });
 
       setMessage(`✅ Folder shared successfully with ${username}!`);
       setUsername('');

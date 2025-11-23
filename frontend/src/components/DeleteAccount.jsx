@@ -28,7 +28,7 @@ function DeleteAccount({ onLogout }) {
     <button
       onClick={handleDelete}
       style={{
-        padding: '8px 18px',
+        padding: '10px 18px',
         background: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
         color: 'white',
         border: 'none',
