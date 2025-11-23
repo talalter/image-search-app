@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 900">
+  <defs>
+    <style>
+      .table-box { fill: #ffffff; stroke: #2c3e50; stroke-width: 2; }
+      .table-header { fill: #3498db; }
+      .table-title { fill: #ffffff; font-family: 'Arial', sans-serif; font-size: 16px; font-weight: bold; }
+      .field-text { fill: #2c3e50; font-family: 'Courier New', monospace; font-size: 13px; }
+      .pk { fill: #f39c12; font-weight: bold; }
+      .fk { fill: #e74c3c; font-style: italic; }
+      .relation-line { stroke: #95a5a6; stroke-width: 2; fill: none; }
+      .relation-arrow { fill: #95a5a6; }
+      .constraint-text { fill: #7f8c8d; font-family: 'Arial', sans-serif; font-size: 11px; font-style: italic; }
+    </style>
+
+    <!-- Arrow marker for foreign key relationships -->
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" class="relation-arrow" />
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="700" y="30" text-anchor="middle" style="font-family: Arial; font-size: 24px; font-weight: bold; fill: #2c3e50;">
+    Image Search Application - Database Schema (PostgreSQL)
+  </text>
+
+  <!-- Users Table -->
+  <g id="users-table">
+    <rect x="50" y="80" width="280" height="180" class="table-box" rx="5"/>
+    <rect x="50" y="80" width="280" height="40" class="table-header" rx="5"/>
+    <text x="190" y="106" text-anchor="middle" class="table-title">USERS</text>
+
+    <text x="65" y="140" class="field-text pk">🔑 id</text>
+    <text x="250" y="140" class="field-text" style="font-size: 11px;">BIGSERIAL PRIMARY KEY</text>
+
+    <text x="65" y="165" class="field-text">username</text>
+    <text x="250" y="165" class="field-text" style="font-size: 11px;">VARCHAR(255) UNIQUE</text>
+
+    <text x="65" y="190" class="field-text">password</text>
+    <text x="250" y="190" class="field-text" style="font-size: 11px;">VARCHAR(255)</text>
+
+    <text x="65" y="215" class="field-text">created_at</text>
+    <text x="250" y="215" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="190" y="250" text-anchor="middle" class="constraint-text">BCrypt hashed passwords</text>
+  </g>
+
+  <!-- Sessions Table -->
+  <g id="sessions-table">
+    <rect x="400" y="80" width="320" height="205" class="table-box" rx="5"/>
+    <rect x="400" y="80" width="320" height="40" class="table-header" rx="5"/>
+    <text x="560" y="106" text-anchor="middle" class="table-title">SESSIONS</text>
+
+    <text x="415" y="140" class="field-text pk">🔑 token</text>
+    <text x="620" y="140" class="field-text" style="font-size: 11px;">VARCHAR(255) PRIMARY KEY</text>
+
+    <text x="415" y="165" class="field-text fk">🔗 user_id</text>
+    <text x="620" y="165" class="field-text" style="font-size: 11px;">BIGINT → users.id</text>
+
+    <text x="415" y="190" class="field-text">created_at</text>
+    <text x="620" y="190" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="415" y="215" class="field-text">expires_at</text>
+    <text x="620" y="215" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="415" y="240" class="field-text">last_seen</text>
+    <text x="620" y="240" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="560" y="275" text-anchor="middle" class="constraint-text">ON DELETE CASCADE</text>
+  </g>
+
+  <!-- Folders Table -->
+  <g id="folders-table">
+    <rect x="50" y="340" width="280" height="205" class="table-box" rx="5"/>
+    <rect x="50" y="340" width="280" height="40" class="table-header" rx="5"/>
+    <text x="190" y="366" text-anchor="middle" class="table-title">FOLDERS</text>
+
+    <text x="65" y="400" class="field-text pk">🔑 id</text>
+    <text x="230" y="400" class="field-text" style="font-size: 11px;">BIGSERIAL PRIMARY KEY</text>
+
+    <text x="65" y="425" class="field-text fk">🔗 user_id</text>
+    <text x="230" y="425" class="field-text" style="font-size: 11px;">BIGINT → users.id</text>
+
+    <text x="65" y="450" class="field-text">folder_name</text>
+    <text x="230" y="450" class="field-text" style="font-size: 11px;">VARCHAR(255)</text>
+
+    <text x="65" y="475" class="field-text">created_at</text>
+    <text x="230" y="475" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="190" y="510" text-anchor="middle" class="constraint-text">UNIQUE(user_id, folder_name)</text>
+    <text x="190" y="530" text-anchor="middle" class="constraint-text">Owner can't duplicate folder names</text>
+  </g>
+
+  <!-- Images Table -->
+  <g id="images-table">
+    <rect x="400" y="340" width="320" height="205" class="table-box" rx="5"/>
+    <rect x="400" y="340" width="320" height="40" class="table-header" rx="5"/>
+    <text x="560" y="366" text-anchor="middle" class="table-title">IMAGES</text>
+
+    <text x="415" y="400" class="field-text pk">🔑 id</text>
+    <text x="610" y="400" class="field-text" style="font-size: 11px;">BIGSERIAL PRIMARY KEY</text>
+
+    <text x="415" y="425" class="field-text fk">🔗 user_id</text>
+    <text x="610" y="425" class="field-text" style="font-size: 11px;">BIGINT → users.id</text>
+
+    <text x="415" y="450" class="field-text fk">🔗 folder_id</text>
+    <text x="610" y="450" class="field-text" style="font-size: 11px;">BIGINT → folders.id</text>
+
+    <text x="415" y="475" class="field-text">filepath</text>
+    <text x="610" y="475" class="field-text" style="font-size: 11px;">TEXT</text>
+
+    <text x="415" y="500" class="field-text">uploaded_at</text>
+    <text x="610" y="500" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="560" y="535" text-anchor="middle" class="constraint-text">Stores image metadata & paths</text>
+  </g>
+
+  <!-- Folder Shares Table -->
+  <g id="folder-shares-table">
+    <rect x="800" y="340" width="370" height="255" class="table-box" rx="5"/>
+    <rect x="800" y="340" width="370" height="40" class="table-header" rx="5"/>
+    <text x="985" y="366" text-anchor="middle" class="table-title">FOLDER_SHARES</text>
+
+    <text x="815" y="400" class="field-text pk">🔑 id</text>
+    <text x="1050" y="400" class="field-text" style="font-size: 11px;">BIGSERIAL PRIMARY KEY</text>
+
+    <text x="815" y="425" class="field-text fk">🔗 folder_id</text>
+    <text x="1050" y="425" class="field-text" style="font-size: 11px;">BIGINT → folders.id</text>
+
+    <text x="815" y="450" class="field-text fk">🔗 owner_id</text>
+    <text x="1050" y="450" class="field-text" style="font-size: 11px;">BIGINT → users.id</text>
+
+    <text x="815" y="475" class="field-text fk">🔗 shared_with_user_id</text>
+    <text x="1050" y="475" class="field-text" style="font-size: 11px;">BIGINT → users.id</text>
+
+    <text x="815" y="500" class="field-text">permission</text>
+    <text x="1050" y="500" class="field-text" style="font-size: 11px;">VARCHAR(50) = 'view'</text>
+
+    <text x="815" y="525" class="field-text">created_at</text>
+    <text x="1050" y="525" class="field-text" style="font-size: 11px;">TIMESTAMP</text>
+
+    <text x="985" y="560" text-anchor="middle" class="constraint-text">UNIQUE(folder_id, shared_with_user_id)</text>
+    <text x="985" y="580" text-anchor="middle" class="constraint-text">✓ One folder → many users | ✗ Same folder → same user twice</text>
+  </g>
+
+  <!-- Relationships -->
+
+  <!-- Users to Sessions -->
+  <path d="M 330 180 L 400 180" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="365" y="170" class="constraint-text">1:N</text>
+
+  <!-- Users to Folders -->
+  <path d="M 190 260 L 190 340" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="200" y="300" class="constraint-text">1:N</text>
+
+  <!-- Folders to Images -->
+  <path d="M 330 440 L 400 440" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="365" y="430" class="constraint-text">1:N</text>
+
+  <!-- Users to Images -->
+  <path d="M 190 260 Q 190 300 350 390" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="270" y="330" class="constraint-text">1:N (uploader)</text>
+
+  <!-- Folders to Folder_Shares -->
+  <path d="M 330 442 Q 550 442 800 442" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="565 y="432" class="constraint-text">1:N (shared folder)</text>
+
+  <!-- Users to Folder_Shares (owner) -->
+  <path d="M 190 260 Q 190 320 985 340" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="500" y="290" class="constraint-text">1:N (owner)</text>
+
+  <!-- Users to Folder_Shares (recipient) -->
+  <path d="M 330 180 Q 750 180 985 340" class="relation-line" marker-end="url(#arrow)"/>
+  <text x="650" y="250" class="constraint-text">1:N (recipient)</text>
+
+  <!-- Legend -->
+  <g id="legend">
+    <rect x="50" y="650" width="500" height="200" fill="#f8f9fa" stroke="#dee2e6" stroke-width="2" rx="5"/>
+    <text x="300" y="680" text-anchor="middle" style="font-family: Arial; font-size: 16px; font-weight: bold; fill: #2c3e50;">
+      Legend
+    </text>
+
+    <text x="70" y="710" class="field-text pk">🔑 Primary Key</text>
+    <text x="250" y="710" class="field-text fk">🔗 Foreign Key</text>
+
+    <line x1="70" y1="725" x2="150" y2="725" class="relation-line" marker-end="url(#arrow)"/>
+    <text x="160" y="730" class="field-text">Relationship (1:N = One-to-Many)</text>
+
+    <text x="70" y="760" style="font-family: Arial; font-size: 13px; fill: #2c3e50;">
+      <tspan x="70" dy="0">Database Engine: PostgreSQL 15+</tspan>
+      <tspan x="70" dy="20">Data Types: BIGSERIAL (auto-increment), VARCHAR, TEXT, TIMESTAMP</tspan>
+      <tspan x="70" dy="20">Constraints: PRIMARY KEY, FOREIGN KEY, UNIQUE, CASCADE DELETE</tspan>
+      <tspan x="70" dy="20">Features: Multi-user folder sharing, session management, organized image storage</tspan>
+    </text>
+  </g>
+
+  <!-- Architecture Notes -->
+  <g id="notes">
+    <rect x="600" y="650" width="750" height="200" fill="#e8f5e9" stroke="#4caf50" stroke-width="2" rx="5"/>
+    <text x="975" y="680" text-anchor="middle" style="font-family: Arial; font-size: 16px; font-weight: bold; fill: #2c3e50;">
+      Key Design Decisions (Software Engineering Best Practices)
+    </text>
+
+    <text x="620" y="710" style="font-family: Arial; font-size: 12px; fill: #2c3e50;">
+      <tspan x="620" dy="0">✓ <tspan font-weight="bold">Normalized Schema:</tspan> 3NF compliance, eliminates data redundancy</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Referential Integrity:</tspan> Foreign keys ensure data consistency across tables</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Cascade Deletes:</tspan> Automatic cleanup when users/folders deleted (prevents orphaned records)</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Unique Constraints:</tspan> Business logic enforcement at DB level (folder names, sharing)</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Security:</tspan> BCrypt password hashing, token-based sessions with expiry</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Scalability:</tspan> BIGSERIAL supports billions of records, indexed foreign keys</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Shared Database:</tspan> Python (FastAPI) & Java (Spring Boot) backends use same schema</tspan>
+      <tspan x="620" dy="18">✓ <tspan font-weight="bold">Extensibility:</tspan> Permission system ready for role-based access control (RBAC)</tspan>
+    </text>
+  </g>
+
+  <!-- Footer -->
+  <text x="700" y="885" text-anchor="middle" style="font-family: Arial; font-size: 11px; fill: #95a5a6;">
+    Created for Image Search Application | Database migrated from SQLite to PostgreSQL for production readiness
+  </text>
+</svg>
