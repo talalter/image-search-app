@@ -9,7 +9,7 @@ echo "Frontend: http://localhost:3000"
 echo "Backend: http://localhost:8080 (Java Spring Boot)"
 echo ""
 echo "Make sure the Java backend is running!"
-echo "Run: ./run-java.sh"
+echo "Run: ./scripts/run-java.sh"
 echo ""
 
 cd frontend

@@ -48,7 +48,7 @@ python app.py
 
 # Terminal 2: Start Java Backend
 cd java-backend
-./run-java.sh
+../scripts/run-java.sh
 
 # Terminal 3: Start React Frontend
 cd frontend
@@ -104,7 +104,7 @@ search-service:
 ```
 
 **Started by:**
-- `./run-java.sh`
+- `./scripts/run-java.sh`
 - OR `cd java-backend && ./gradlew bootRun`
 
 **Endpoints:**
@@ -227,13 +227,13 @@ REACT_APP_BACKEND=python npm start
 
 ```bash
 # Setup PostgreSQL (one time only)
-./setup-postgres.sh
+./scripts/setup-postgres.sh
 
 # Terminal 1: Python Search Service
 cd search-service && python app.py
 
 # Terminal 2: Java Backend
-./run-java.sh
+./scripts/run-java.sh
 
 # Terminal 3: React Frontend
 cd frontend && npm start

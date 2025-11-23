@@ -9,7 +9,7 @@ echo "Frontend: http://localhost:3000"
 echo "Backend: http://localhost:8000 (Python FastAPI)"
 echo ""
 echo "Make sure the Python backend is running!"
-echo "Run: ./run-python-backend.sh"
+echo "Run: ./scripts/run-python-backend.sh"
 echo ""
 
 cd frontend

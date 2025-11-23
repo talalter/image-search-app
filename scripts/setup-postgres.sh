@@ -78,7 +78,7 @@ if [ $? -eq 0 ]; then
     echo "  ./gradlew bootRun"
     echo ""
     echo "Or use the run script:"
-    echo "  ./run-java.sh"
+    echo "  ./scripts/run-java.sh"
     echo ""
 else
     echo ""

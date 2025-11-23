@@ -121,13 +121,13 @@ This application demonstrates a **professional microservices architecture** with
 
 ## Quick Start (Local Development)
 
-> 📌 **See [HOW_TO_SWITCH_BACKENDS.md](HOW_TO_SWITCH_BACKENDS.md) for complete switching guide**
+> 📌 **See [docs/HOW_TO_SWITCH_BACKENDS.md](docs/HOW_TO_SWITCH_BACKENDS.md) for complete switching guide**
 >
-> 📌 **See [PORTS_AND_ARCHITECTURE.md](PORTS_AND_ARCHITECTURE.md) for port configuration details**
+> 📌 **See [docs/PORTS_AND_ARCHITECTURE.md](docs/PORTS_AND_ARCHITECTURE.md) for port configuration details**
 
 ### Prerequisites
 - **Java 17+** ([Download OpenJDK](https://adoptium.net/))
-- **PostgreSQL 15+** ([Installation guide](POSTGRESQL_SETUP.md))
+- **PostgreSQL 15+** ([Installation guide](docs/POSTGRESQL_SETUP.md))
 - **Python 3.12+** with pip
 - **Node.js 18+** with npm
 - 4GB+ RAM (CLIP model requires ~2GB)
@@ -135,7 +135,7 @@ This application demonstrates a **professional microservices architecture** with
 ### 1. Database Setup
 
 ```bash
-# Install and start PostgreSQL (see POSTGRESQL_SETUP.md for details)
+# Install and start PostgreSQL (see docs/POSTGRESQL_SETUP.md for details)
 sudo apt install postgresql  # Ubuntu/Debian
 # or
 brew install postgresql@15   # macOS

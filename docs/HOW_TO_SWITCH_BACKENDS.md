@@ -13,13 +13,13 @@ React (3000) → Java Backend (8080) → Python Search Service (5000)
 
 ```bash
 # Terminal 1: Python Search Microservice
-./run-search-service.sh
+./scripts/run-search-service.sh
 
 # Terminal 2: Java Backend
-./run-java.sh
+./scripts/run-java.sh
 
 # Terminal 3: React Frontend (Java mode)
-./run-frontend-java.sh
+./scripts/run-frontend-java.sh
 ```
 
 **Or manually:**
@@ -32,7 +32,7 @@ pip install -r requirements.txt
 python app.py
 
 # Terminal 2
-./run-java.sh
+./scripts/run-java.sh
 
 # Terminal 3
 cd frontend
@@ -52,10 +52,10 @@ React (3000) → Python Backend (8000)
 
 ```bash
 # Terminal 1: Python Backend
-./run-python-backend.sh
+./scripts/run-python-backend.sh
 
 # Terminal 2: React Frontend (Python mode)
-./run-frontend-python.sh
+./scripts/run-frontend-python.sh
 ```
 
 **Or manually:**
@@ -106,7 +106,7 @@ npm start
 # OR
 REACT_APP_BACKEND=java npm start
 # OR
-./run-frontend-java.sh
+../scripts/run-frontend-java.sh
 ```
 
 ### To use Python backend:
@@ -114,7 +114,7 @@ REACT_APP_BACKEND=java npm start
 cd frontend
 REACT_APP_BACKEND=python npm start
 # OR
-./run-frontend-python.sh
+../scripts/run-frontend-python.sh
 ```
 
 ---
@@ -183,7 +183,7 @@ pip install -r requirements.txt
 
 **Solution:**
 ```bash
-./setup-postgres.sh
+./scripts/setup-postgres.sh
 ```
 
 ---
@@ -193,16 +193,16 @@ pip install -r requirements.txt
 ### For Java Backend Setup:
 
 - [ ] PostgreSQL is installed and running
-- [ ] Database is created: `./setup-postgres.sh`
-- [ ] Search service is running: `./run-search-service.sh`
-- [ ] Java backend is running: `./run-java.sh`
-- [ ] Frontend is in Java mode: `./run-frontend-java.sh`
+- [ ] Database is created: `./scripts/setup-postgres.sh`
+- [ ] Search service is running: `./scripts/run-search-service.sh`
+- [ ] Java backend is running: `./scripts/run-java.sh`
+- [ ] Frontend is in Java mode: `./scripts/run-frontend-java.sh`
 - [ ] Browser console shows: `🔌 Using JAVA backend at http://localhost:8080`
 
 ### For Python Backend Setup:
 
-- [ ] Python backend is running: `./run-python-backend.sh`
-- [ ] Frontend is in Python mode: `./run-frontend-python.sh`
+- [ ] Python backend is running: `./scripts/run-python-backend.sh`
+- [ ] Frontend is in Python mode: `./scripts/run-frontend-python.sh`
 - [ ] Browser console shows: `🔌 Using PYTHON backend at http://localhost:8000`
 
 ---
@@ -262,15 +262,15 @@ Both backends use the **exact same RESTful API endpoints**:
 1. **Stop** Java backend (Ctrl+C)
 2. **Stop** Search service (Ctrl+C)
 3. **Stop** React frontend (Ctrl+C)
-4. **Start** Python backend: `./run-python-backend.sh`
-5. **Start** React in Python mode: `./run-frontend-python.sh`
+4. **Start** Python backend: `./scripts/run-python-backend.sh`
+5. **Start** React in Python mode: `./scripts/run-frontend-python.sh`
 
 ### To Switch from Python to Java:
 
 1. **Stop** Python backend (Ctrl+C)
 2. **Stop** React frontend (Ctrl+C)
-3. **Start** Search service: `./run-search-service.sh`
-4. **Start** Java backend: `./run-java.sh`
-5. **Start** React in Java mode: `./run-frontend-java.sh`
+3. **Start** Search service: `./scripts/run-search-service.sh`
+4. **Start** Java backend: `./scripts/run-java.sh`
+5. **Start** React in Java mode: `./scripts/run-frontend-java.sh`
 
 **That's it! No code changes needed - just different startup commands!** 🚀
