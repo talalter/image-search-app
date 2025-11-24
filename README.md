@@ -8,20 +8,20 @@ Enterprise-grade image search application using AI-powered semantic search. Buil
 [![React](https://img.shields.io/badge/React-18-61dafb.svg)](https://reactjs.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-336791.svg)](https://www.postgresql.org/)
 
-## 🎯 What This App Does
+## What This App Does
 
 Upload your images and search them using **natural language** - no tags or keywords needed. Ask for "sunset over mountains" or "red sports car" and the AI finds matching images based on semantic meaning.
 
 ### Key Features
 
-- **🤖 AI-Powered Search**: Uses OpenAI CLIP model to understand image content
+- **AI-Powered Search**: Uses OpenAI CLIP model to understand image content
 - **⚡ Lightning Fast**: FAISS vector search across thousands of images in milliseconds
-- **📁 Organization**: Create folders and manage image collections
-- **🔒 Secure**: BCrypt password hashing with session-based authentication
-- **🤝 Collaboration**: Share folders with other users (view or edit permissions)
-- **📤 Bulk Upload**: Drag & drop multiple images with automatic AI processing
+- **Organization**: Create folders and manage image collections
+- **Secure**: BCrypt password hashing with session-based authentication
+- **Collaboration**: Share folders with other users (view or edit permissions)
+- **Bulk Upload**: Drag & drop multiple images with automatic AI processing
 
-## 🏗️ Architecture
+## Architecture
 
 **Microservices Architecture** demonstrating production-ready design patterns:
 
@@ -60,7 +60,7 @@ Java Spring Boot Backend (Port 8080)
 - Multi-tenant data isolation
 - Session management with sliding window expiration
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -108,7 +108,7 @@ npm install
 npm start  # Opens http://localhost:3000
 ```
 
-## 📖 How to Use
+## How to Use
 
 1. **Register**: Create an account at http://localhost:3000
 2. **Create Folder**: Click "Manage Folders" → "Create Folder"
@@ -119,7 +119,7 @@ npm start  # Opens http://localhost:3000
    - "modern architecture"
 5. **Share**: Click "Share Folder" to collaborate with others
 
-## 🔑 Key Technical Highlights
+## Key Technical Highlights
 
 ### Microservices Communication
 - Java backend orchestrates Python AI service via HTTP
@@ -143,7 +143,7 @@ npm start  # Opens http://localhost:3000
 - Sliding window session refresh
 - SQL injection prevention via JPA parameterized queries
 
-## 🗂️ Project Structure
+## Project Structure
 
 ```
 image-search-app/
@@ -171,7 +171,7 @@ image-search-app/
     └── indexes/              # FAISS indexes
 ```
 
-## 📊 Database Schema
+## Database Schema
 
 **Core Tables:**
 - `users` - User accounts with BCrypt passwords
@@ -185,7 +185,7 @@ image-search-app/
 - Folders contain images (1:N)
 - Users share folders with permissions (N:M)
 
-## 🧪 Testing
+## Testing
 
 ```bash
 # Java backend tests
@@ -197,7 +197,7 @@ cd python-backend
 pytest tests/
 ```
 
-## 🐳 Docker Deployment
+## Docker Deployment
 
 ```bash
 # Java backend with search service
@@ -209,7 +209,7 @@ docker-compose -f docker-compose.python.yml up
 
 See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 
-## 📚 API Documentation
+## API Documentation
 
 ### Main Endpoints
 
@@ -227,7 +227,7 @@ See [DOCKER.md](DOCKER.md) for detailed deployment instructions.
 - `POST /api/folders/share` - Share with other users
 - `DELETE /api/folders` - Delete folder + FAISS index
 
-## 🎓 Learning Highlights
+## Learning Highlights
 
 This project demonstrates:
 
@@ -240,15 +240,13 @@ This project demonstrates:
 - **Docker containerization** for reproducible deployments
 - **Git workflow** with meaningful commits and branches
 
-## 🔗 Live Demo
 
-🚧 Coming soon - Currently setting up cloud deployment
 
-## 📄 License
+## License
 
 MIT License - See [LICENSE](LICENSE) for details
 
-## 👤 Author
+## Author
 
 **Tal Alter**
 - GitHub: [@talalter](https://github.com/talalter)
@@ -257,9 +255,9 @@ MIT License - See [LICENSE](LICENSE) for details
 
 ---
 
-⭐ **If this project helped you learn something new, please consider starring it!**
+**If this project helped you learn something new, please consider starring it!**
 
-## 🙏 Acknowledgments
+## Acknowledgments
 
 Built with:
 - [OpenAI CLIP](https://github.com/openai/CLIP) - Image understanding
