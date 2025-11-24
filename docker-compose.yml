@@ -8,7 +8,7 @@ services:
       dockerfile: backend/Dockerfile
     container_name: image-search-backend
     ports:
-      - "9999:9999"
+      - "8000:8000"
     volumes:
       # Persist uploaded images
       - ./backend/images:/app/images
@@ -24,7 +24,7 @@ services:
       - image-search-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:9999/')"]
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/')"]
       interval: 30s
       timeout: 10s
       retries: 3

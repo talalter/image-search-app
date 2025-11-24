@@ -1,29 +1,10 @@
+# Python Backend Stack
+# Prerequisites: Start shared services first with: docker-compose -f docker-compose.shared.yml up -d
+# Then run: docker-compose -f docker-compose.python.yml up -d
+
 version: '3.8'
 
 services:
-  # Python Search Service (CLIP + FAISS)
-  search-service:
-    build:
-      context: ./search-service
-      dockerfile: Dockerfile
-    container_name: imagesearch-search-service
-    environment:
-      - PYTHONUNBUFFERED=1
-    volumes:
-      # Mount shared data directory (read images, write indexes)
-      - app-data:/app/data
-    ports:
-      - "5000:5000"
-    networks:
-      - imagesearch-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
   # Python Backend (FastAPI)
   python-backend:
     build:
@@ -31,23 +12,28 @@ services:
       dockerfile: python-backend/Dockerfile
     container_name: imagesearch-python-backend
     environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/imagesearch
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=imagesearch
+      - DB_USERNAME=imageuser
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
       - PYTHONUNBUFFERED=1
       - STORAGE_BACKEND=local
-      - DB_DIR=/app/data
       - SEARCH_SERVICE_URL=http://search-service:5000
     volumes:
       # Mount shared data directory (write images, access database)
       - app-data:/app/data
     ports:
-      - "9999:9999"
-    depends_on:
-      search-service:
-        condition: service_healthy
+      - "8000:8000"
     networks:
       - imagesearch-network
+    external_links:
+      - imagesearch-postgres:postgres
+      - imagesearch-search-service:search-service
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9999/"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -59,7 +45,7 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=http://localhost:9999
+        - REACT_APP_API_URL=http://localhost:8000
     container_name: imagesearch-frontend
     ports:
       - "3000:80"
@@ -77,12 +63,9 @@ services:
 
 networks:
   imagesearch-network:
-    driver: bridge
+    external: true
 
 volumes:
-  # Single shared data volume containing:
-  # - data/uploads/ (uploaded images)
-  # - data/indexes/ (FAISS indexes)
-  # - database files (SQLite)
+  # Use shared volume from docker-compose.shared.yml
   app-data:
-    driver: local
+    external: true

@@ -34,10 +34,13 @@ logger = logging.getLogger(__name__)
 
 app = FastAPI(title="Image Search Microservice", version="1.0.0")
 
-# CORS - allow Java backend to call this service
+# CORS - allow both Java and Python backends to call this service
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:8080"],  # Java backend
+    allow_origins=[
+        "http://localhost:8080",  # Java backend
+        "http://localhost:8000",  # Python backend
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
