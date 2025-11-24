@@ -23,28 +23,42 @@ Upload your images and search them using **natural language** - no tags or keywo
 
 ## Architecture
 
-**Microservices Architecture** demonstrating production-ready design patterns:
+**Microservices Architecture** demonstrating production-ready design patterns with **two interchangeable backend implementations**:
 
 ```
 React Frontend (Port 3000)
         ↓
-Java Spring Boot Backend (Port 8080)
-   ├─→ PostgreSQL Database (Port 5432)
-   └─→ Python Search Service (Port 5000)
-          ├─→ CLIP (AI Embeddings)
-          └─→ FAISS (Vector Search)
+Backend ← Choose ONE:
+   ├─→ Java Spring Boot (Port 8080)
+   └─→ Python FastAPI (Port 9999)
+        │
+        ├─→ PostgreSQL Database (Port 5432)
+        └─→ Python Search Service (Port 5000)
+               ├─→ CLIP (AI Embeddings)
+               └─→ FAISS (Vector Search)
 ```
+
+Both backends provide **identical REST API functionality** - choose based on your preference. Both use the same PostgreSQL database and delegate AI/ML operations to the dedicated search service.
 
 ### Technology Stack
 
-**Backend (Java Spring Boot)**
+**Backend Options (Choose One):**
+
+**Java Spring Boot Backend (Port 8080)**
 - RESTful API design with layered architecture
 - Spring Data JPA + Hibernate ORM
 - WebClient for microservice communication
 - Transaction management and global exception handling
 - Comprehensive test suite (JUnit + Mockito)
 
-**Search Service (Python FastAPI)**
+**Python FastAPI Backend (Port 9999)**
+- Modern async FastAPI framework
+- Direct psycopg2 for PostgreSQL operations
+- HTTP client for search service communication
+- Structured exception handling with custom error types
+- Comprehensive test suite (pytest + mocking)
+
+**Search Service (Python FastAPI - Port 5000)**
 - OpenAI CLIP model for image embeddings
 - FAISS for high-performance vector similarity search
 - Batch processing to prevent concurrency issues
@@ -64,11 +78,11 @@ Java Spring Boot Backend (Port 8080)
 
 ### Prerequisites
 
-- Java 17+
 - PostgreSQL 15+
 - Python 3.12+
 - Node.js 18+
-- 4GB+ RAM (for CLIP model)
+- **For Java Backend:** Java 17+
+- 2GB+ RAM (CLIP model runs on CPU)
 
 ### 1. Setup Database
 
@@ -91,7 +105,9 @@ pip install -r requirements.txt
 python app.py  # Runs on http://localhost:5000
 ```
 
-### 3. Start Java Backend
+### 3. Start Backend (Choose ONE)
+
+#### Option A: Java Spring Boot Backend
 
 ```bash
 cd java-backend
@@ -100,12 +116,30 @@ export DB_PASSWORD=yourpassword
 ./gradlew bootRun  # Runs on http://localhost:8080
 ```
 
+#### Option B: Python FastAPI Backend
+
+```bash
+cd python-backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r ../requirements.txt
+export DB_USERNAME=imageuser
+export DB_PASSWORD=yourpassword
+uvicorn api:app --host 0.0.0.0 --port 9999  # Runs on http://localhost:9999
+```
+
+**Note:** Configure frontend to point to the correct backend port (8080 for Java, 9999 for Python).
+
 ### 4. Start React Frontend
 
 ```bash
 cd frontend
 npm install
-npm start  # Opens http://localhost:3000
+# For Java backend:
+REACT_APP_API_URL=http://localhost:8080 npm start
+# For Python backend:
+REACT_APP_API_URL=http://localhost:9999 npm start
+# Opens http://localhost:3000
 ```
 
 ## How to Use
