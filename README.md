@@ -15,7 +15,7 @@ Upload your images and search them using **natural language** - no tags or keywo
 ### Key Features
 
 - **AI-Powered Search**: Uses OpenAI CLIP model to understand image content
-- **⚡ Lightning Fast**: FAISS vector search across thousands of images in milliseconds
+- **Lightning Fast**: FAISS vector search across thousands of images in milliseconds
 - **Organization**: Create folders and manage image collections
 - **Secure**: BCrypt password hashing with session-based authentication
 - **Collaboration**: Share folders with other users (view or edit permissions)
