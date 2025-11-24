@@ -1,12 +1,13 @@
-fastapi==0.104.1
-uvicorn==0.24.0
-pydantic==2.5.0
-numpy==1.24.3
-faiss-cpu==1.7.4
-torch==2.1.0
-torchvision==0.16.0
-pillow==10.1.0
-ftfy==6.1.1
-regex==2023.10.3
+fastapi==0.115.12
+uvicorn==0.34.3
+pydantic==2.11.5
+numpy==2.3.0
+faiss-cpu==1.11.0
+pillow==10.2.0
+ftfy==6.3.1
+regex==2025.11.3
 tqdm==4.66.1
-git+https://github.com/openai/CLIP.git
+clip@ git+https://github.com/openai/CLIP.git@dcba3cb2e2827b402d2701e7e1c7d9fed8a20ef1
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.7.1+cpu
+torchvision==0.22.1+cpu
