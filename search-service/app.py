@@ -109,11 +109,19 @@ class CreateIndexRequest(BaseModel):
 
 @app.get("/")
 def root():
-    """Health check endpoint."""
+    """Root endpoint."""
     return {
         "service": "Image Search Microservice",
         "status": "running",
         "version": "1.0.0"
+    }
+
+@app.get("/health")
+def health():
+    """Health check endpoint for Docker."""
+    return {
+        "status": "healthy",
+        "service": "search-service"
     }
 
 @app.post("/search", response_model=SearchResponse)
@@ -177,17 +185,24 @@ def embed_images(request: EmbedImagesRequest):
     logger.info(f"Embed request: userId={request.user_id}, folderId={request.folder_id}, count={len(request.images)}")
 
     try:
+        # Generate all embeddings first (batch processing)
+        embeddings = []
+        image_ids = []
+
         for image_info in request.images:
             # Generate embedding
             embedding = embedding_service.embed_image_file(image_info.file_path)
+            embeddings.append(embedding)
+            image_ids.append(image_info.image_id)
 
-            # Add to FAISS index
-            search_handler.add_vector_to_faiss(
-                user_id=request.user_id,
-                folder_id=request.folder_id,
-                vector=embedding,
-                vector_id=image_info.image_id
-            )
+        # Add all embeddings to FAISS index in a single operation
+        # This avoids concurrency issues when multiple requests arrive simultaneously
+        search_handler.add_vectors_batch(
+            user_id=request.user_id,
+            folder_id=request.folder_id,
+            vectors=embeddings,
+            vector_ids=image_ids
+        )
 
         logger.info(f"Successfully embedded {len(request.images)} images")
         return {"message": f"Successfully embedded {len(request.images)} images"}

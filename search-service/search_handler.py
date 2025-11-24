@@ -14,7 +14,19 @@ from embedding_service import EmbeddingService
 
 logger = logging.getLogger(__name__)
 
-FAISS_FOLDER = "faiss_indexes"
+# Determine base folder based on environment
+def get_faiss_base_folder():
+    """Get FAISS index base folder (supports both Docker and local dev)."""
+    if os.path.exists("/app"):
+        # Docker environment
+        return "/app/data/indexes"
+    else:
+        # Local development - use data/indexes relative to project root
+        # search-service/ is at project root level, so go up and use data/indexes
+        project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        return os.path.join(project_root, "data", "indexes")
+
+FAISS_FOLDER = get_faiss_base_folder()
 
 class SearchHandler:
     """Manages FAISS indexes for image search."""
@@ -78,6 +90,43 @@ class SearchHandler:
         # Save updated index
         faiss.write_index(index, index_path)
         logger.debug(f"Added vector {vector_id} to index {index_path}")
+
+    def add_vectors_batch(self, user_id: int, folder_id: int, vectors: list, vector_ids: list):
+        """
+        Add multiple image embeddings to the FAISS index in a single batch operation.
+        This is more efficient and avoids concurrency issues compared to multiple individual adds.
+
+        Args:
+            user_id: User ID
+            folder_id: Folder ID
+            vectors: List of image embedding vectors (numpy arrays)
+            vector_ids: List of image IDs (from database)
+        """
+        if len(vectors) != len(vector_ids):
+            raise ValueError(f"Vectors count ({len(vectors)}) must match IDs count ({len(vector_ids)})")
+
+        if len(vectors) == 0:
+            logger.warning("add_vectors_batch called with empty vectors list")
+            return
+
+        index_path = self._get_folder_path(user_id, folder_id)
+        if not os.path.exists(index_path):
+            raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
+
+        # Load existing index
+        index = faiss.read_index(index_path)
+
+        # Stack all vectors into a single numpy array and normalize
+        vectors_array = np.vstack([np.array(v, dtype='float32').reshape(1, -1) for v in vectors])
+        vectors_array = self._normalize(vectors_array)
+        ids_array = np.array(vector_ids, dtype='int64')
+
+        # Add all vectors at once
+        index.add_with_ids(vectors_array, ids_array)
+
+        # Save updated index (single write operation)
+        faiss.write_index(index, index_path)
+        logger.info(f"Batch added {len(vectors)} vectors to index {index_path}")
 
     def search_with_ownership(
         self,

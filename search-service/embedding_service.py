@@ -47,21 +47,37 @@ class EmbeddingService:
         Generate embedding for an image file.
 
         Args:
-            filepath: Path to image file (relative to project root)
+            filepath: Path to image file
+                      - Can be absolute path
+                      - Can be relative path starting with "images/" (will be resolved from project root)
 
         Returns:
             numpy array containing the image embedding
         """
         try:
-            # Convert relative path to absolute path from project root
-            # Search service runs in search-service/, images are in ../images/
             import os
-            if not os.path.isabs(filepath):
-                # Go up one level from search-service/ to project root
-                project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-                filepath = os.path.join(project_root, filepath)
 
-            pil_image = Image.open(filepath).convert("RGB")
+            # If absolute path, use as-is
+            if os.path.isabs(filepath):
+                resolved_path = filepath
+            # If path starts with "images/", it's stored in data/uploads/images/ but DB has "images/" prefix
+            elif filepath.startswith("images/"):
+                # Convert images/ -> data/uploads/images/
+                relative_path = filepath.replace("images/", "data/uploads/images/", 1)
+
+                if os.path.exists("/app/data/uploads"):
+                    # Docker environment
+                    resolved_path = os.path.join("/app", relative_path)
+                else:
+                    # Local development - go up from search-service/ to project root
+                    project_root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+                    resolved_path = os.path.join(project_root, relative_path)
+            else:
+                # Other relative paths - resolve from current directory
+                resolved_path = filepath
+
+            logger.debug(f"Resolving image path: {filepath} -> {resolved_path}")
+            pil_image = Image.open(resolved_path).convert("RGB")
             return self.embed_image(pil_image)
         except Exception as e:
             logger.error(f"Failed to embed image {filepath}: {e}")

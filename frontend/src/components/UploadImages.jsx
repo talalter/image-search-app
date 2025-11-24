@@ -2,6 +2,7 @@ import React, {useEffect, useState, useCallback, useMemo } from 'react';
 import { uploadImagesForm, getFolders as apiGetFolders } from '../utils/api';
 
 // Upload files in batches for better performance
+// Python backend now handles concurrent writes safely with batch processing
 async function uploadImagesInBatches(files, folderName, onProgress) {
   const BATCH_SIZE = 20; // Upload 20 images at a time
   const token = localStorage.getItem('token');
@@ -10,14 +11,14 @@ async function uploadImagesInBatches(files, folderName, onProgress) {
   for (let i = 0; i < files.length; i += BATCH_SIZE) {
     const batch = files.slice(i, i + BATCH_SIZE);
     const formData = new FormData();
-    
+
     formData.append('token', token);
     formData.append('folderName', folderName);
     batch.forEach(file => formData.append('files', file));
 
     const result = await uploadImagesForm(formData);
     totalUploaded += result.uploaded_count;
-    
+
     // Update progress
     if (onProgress) {
       onProgress(totalUploaded, files.length);
@@ -173,8 +174,8 @@ function UploadImages({folderId, onUploadSuccess}) {
     
     try {
       const res = await uploadImagesInBatches(
-        files, 
-        folderName, 
+        files,
+        folderName,
         updateProgress
       );
       setMessage(`Successfully uploaded ${res.uploaded_count} images.`);
