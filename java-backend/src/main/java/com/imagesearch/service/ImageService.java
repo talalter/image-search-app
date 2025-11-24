@@ -122,6 +122,7 @@ public class ImageService {
         }
 
         // Trigger background embedding generation in Python service
+        // Send all images in a single request to avoid concurrency issues
         if (!imagesToEmbed.isEmpty()) {
             EmbedImagesRequest embedRequest = new EmbedImagesRequest(
                 userId,
@@ -156,9 +157,9 @@ public class ImageService {
         Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
             ? currentDir.getParent()
             : currentDir;
-        Path imagesRoot = projectRoot.resolve("images");
+        Path imagesRoot = projectRoot.resolve("data").resolve("uploads").resolve("images");
 
-        // Create directory structure: {project-root}/images/{userId}/{folderId}/
+        // Create directory structure: {project-root}/data/uploads/images/{userId}/{folderId}/
         Path directoryPath = imagesRoot.resolve(userId.toString()).resolve(folderId.toString());
         Files.createDirectories(directoryPath);
 
