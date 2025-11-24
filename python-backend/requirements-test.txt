@@ -1,0 +1,31 @@
+# Testing dependencies for Python backend
+
+# Core testing framework
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+pytest-mock==3.12.0
+
+# HTTP testing
+httpx==0.25.2
+
+# Database testing
+sqlalchemy==2.0.23
+
+# Image testing
+Pillow==10.1.0
+
+# Mocking and fixtures
+faker==20.1.0
+
+# Code quality
+pytest-flake8==1.1.1
+pytest-pylint==0.21.0
+black==23.12.1
+isort==5.13.2
+
+# Coverage reporting
+coverage[toml]==7.3.3
+
+# Load testing (optional)
+locust==2.19.1
