@@ -12,7 +12,11 @@ echo "Make sure the Python backend is running!"
 echo "Run: ./scripts/run-python-backend.sh"
 echo ""
 
-cd frontend
+# Get the project root directory (parent of scripts/)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
+
+cd "$PROJECT_ROOT/frontend"
 
 # Set backend to Python (port 8000)
 export REACT_APP_BACKEND=python

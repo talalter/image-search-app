@@ -2,7 +2,6 @@ import faiss
 import numpy as np
 import os
 from utils import embed_text
-import heapq
 import logging
 import threading
 

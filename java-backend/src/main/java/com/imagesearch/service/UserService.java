@@ -14,6 +14,13 @@ import org.slf4j.LoggerFactory;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.Comparator;
+import java.util.stream.Stream;
 
 /**
  * Service for user management (authentication, registration).
@@ -120,13 +127,69 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        // Invalidate all sessions
+        // 1. Invalidate all sessions
         sessionService.invalidateAllUserSessions(user);
 
-        // Delete user (cascades to folders, images, shares via JPA)
+        // 2. Delete user (cascades to folders, images, shares via JPA)
         userRepository.delete(user);
 
-        logger.info("User account deleted: id={}", userId);
+        // 3. Delete physical image files from filesystem
+        deleteUserImages(userId);
+
+        // 4. Delete FAISS indices
+        deleteUserIndices(userId);
+
+        logger.info("User account and all associated data deleted: id={}", userId);
+    }
+
+    /**
+     * Delete all physical image files for a user.
+     */
+    private void deleteUserImages(Long userId) {
+        try {
+            Path currentDir = Paths.get("").toAbsolutePath();
+            Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
+                ? currentDir.getParent()
+                : currentDir;
+            Path userImagesPath = projectRoot.resolve("data").resolve("uploads").resolve("images").resolve(userId.toString());
+
+            if (Files.exists(userImagesPath)) {
+                try (Stream<Path> paths = Files.walk(userImagesPath)) {
+                    paths.sorted(Comparator.reverseOrder())
+                         .map(Path::toFile)
+                         .forEach(File::delete);
+                }
+                logger.info("Deleted user images: {}", userImagesPath);
+            }
+        } catch (IOException e) {
+            logger.error("Failed to delete user images for userId=" + userId, e);
+            // Don't throw - best effort cleanup
+        }
+    }
+
+    /**
+     * Delete all FAISS indices for a user.
+     */
+    private void deleteUserIndices(Long userId) {
+        try {
+            Path currentDir = Paths.get("").toAbsolutePath();
+            Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
+                ? currentDir.getParent()
+                : currentDir;
+            Path userIndicesPath = projectRoot.resolve("data").resolve("indexes").resolve(userId.toString());
+
+            if (Files.exists(userIndicesPath)) {
+                try (Stream<Path> paths = Files.walk(userIndicesPath)) {
+                    paths.sorted(Comparator.reverseOrder())
+                         .map(Path::toFile)
+                         .forEach(File::delete);
+                }
+                logger.info("Deleted user FAISS indices: {}", userIndicesPath);
+            }
+        } catch (IOException e) {
+            logger.error("Failed to delete user indices for userId=" + userId, e);
+            // Don't throw - best effort cleanup
+        }
     }
 
     /**

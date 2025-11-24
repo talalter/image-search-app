@@ -1,22 +1,86 @@
-
+# Python
 __pycache__/
 *.pyc
-*.faiss
-*.pkl
-*.npy
-*.sqlite
-*.db
-*.jpeg
-*.jpg
-*.png
-.env
-.env/
-talenv/
+*.pyo
+*.pyd
+.Python
+*.so
+*.egg
+*.egg-info/
+dist/
+build/
 venv/
 env/
+ENV/
+talenv/
+
+# Data directories (images, indexes, database)
+data/
+images/
 static/uploads/
+
+# FAISS indexes
+*.faiss
+*.index
+**/faiss_indexes/
+**/faisses_indexes/
+
+# Machine learning models
+*.pkl
+*.npy
+*.h5
+*.pb
+
+# Databases
+*.sqlite
+*.sqlite3
+*.db
+*.sql
+
+# Environment variables
+.env
+.env.*
+!.env.example
 
 # Log files
 *.log
 logs/
-backend/logs/
+**/**/logs/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*.swn
+.DS_Store
+Thumbs.db
+
+# Build artifacts
+build/
+dist/
+*.class
+*.jar
+!gradle-wrapper.jar
+
+# Frontend
+node_modules/
+.cache/
+*.tsbuildinfo
+
+# Image files (uploaded by users)
+*.jpeg
+*.jpg
+*.png
+*.gif
+*.webp
+*.bmp
+*.tiff
+*.svg
+
+# Temporary files
+*.tmp
+*.temp
+.pytest_cache/
+.coverage
+htmlcov/

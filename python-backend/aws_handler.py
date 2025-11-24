@@ -6,7 +6,6 @@ BUCKET_NAME = "images-search-app"
 load_dotenv()
 
 storage_backend = os.getenv("STORAGE_BACKEND", "local").lower()
-print(storage_backend)
 
 def upload_folder_to_bucket(file, key, upload_type='folder'):
     """Uploads a folder or file to an S3 bucket."""
@@ -29,9 +28,16 @@ def upload_folder_to_bucket(file, key, upload_type='folder'):
 
 
 def upload_folder_to_local(file, key, upload_type='folder'):
-    # Use parent directory (project root) instead of current working directory
-    base_folder = os.path.dirname(os.getcwd())
-    folder_path = os.path.join(base_folder, key)
+    # Get project root directory (one level up from python-backend)
+    current_dir = os.getcwd()
+    # If we're in python-backend, go up one level
+    if os.path.basename(current_dir) == 'python-backend':
+        project_root = os.path.dirname(current_dir)
+    else:
+        project_root = current_dir
+
+    # Build path: {project-root}/data/uploads/{key}
+    folder_path = os.path.join(project_root, 'data', 'uploads', key)
 
     os.makedirs(os.path.dirname(folder_path), exist_ok=True)
 
@@ -39,7 +45,7 @@ def upload_folder_to_local(file, key, upload_type='folder'):
         file.file.seek(0)
         with open(folder_path, 'wb') as f:
             f.write(file.file.read())
-    
+
     return folder_path
 
 def generate_presigned_url(s3_key: str, bucket_name=BUCKET_NAME, expiration=60) -> str:

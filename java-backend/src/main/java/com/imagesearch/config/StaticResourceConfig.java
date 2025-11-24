@@ -18,17 +18,17 @@ public class StaticResourceConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        // Get absolute path to images directory in project root
+        // Get absolute path to data/uploads/images directory in project root
         Path currentDir = Paths.get("").toAbsolutePath();
         Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
             ? currentDir.getParent()
             : currentDir;
-        Path imagesPath = projectRoot.resolve("images");
+        Path imagesPath = projectRoot.resolve("data").resolve("uploads").resolve("images");
 
         // Ensure the path ends with separator for proper resource resolution
         String imagesLocation = "file:" + imagesPath.toAbsolutePath() + "/";
 
-        // Map /images/** URLs to the filesystem images directory
+        // Map /images/** URLs to the filesystem data/uploads/images directory
         registry.addResourceHandler("/images/**")
                 .addResourceLocations(imagesLocation);
     }

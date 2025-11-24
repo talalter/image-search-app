@@ -6,10 +6,20 @@ echo "============================================"
 echo "Starting Java Backend"
 echo "============================================"
 echo ""
+echo "⚠️  Make sure search-service is running!"
+echo "Run: ./scripts/run-search-service.sh"
+echo ""
+
+# Get the project root directory (parent of scripts/)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+PROJECT_ROOT="$( cd "$SCRIPT_DIR/.." && pwd )"
 
 # Set database credentials
 export DB_USERNAME=imageuser
 export DB_PASSWORD=imagepass123
+
+# Set search service URL for local development
+export SEARCH_SERVICE_URL=http://localhost:5000
 
 echo "Database configuration:"
 echo "  Database: imagesearch"
@@ -32,4 +42,4 @@ fi
 echo "Starting Java backend on port 8080..."
 echo ""
 
-cd java-backend && ./gradlew bootRun
+cd "$PROJECT_ROOT/java-backend" && ./gradlew bootRun

@@ -44,8 +44,61 @@ dependencies {
     // Testing
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'com.h2database:h2'
+    testImplementation 'org.mockito:mockito-core:5.7.0'
+    testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
+    testImplementation 'org.assertj:assertj-core:3.24.2'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+
+    // Test configuration
+    testLogging {
+        events "passed", "skipped", "failed"
+        exceptionFormat "full"
+        showStandardStreams = false
+    }
+
+    // Generate test coverage report
+    finalizedBy jacocoTestReport
 }
+
+// Jacoco test coverage
+apply plugin: 'jacoco'
+
+jacoco {
+    toolVersion = "0.8.11"
+}
+
+jacocoTestReport {
+    dependsOn test
+
+    reports {
+        xml.required = true
+        html.required = true
+        csv.required = false
+    }
+
+    afterEvaluate {
+        classDirectories.setFrom(files(classDirectories.files.collect {
+            fileTree(dir: it, exclude: [
+                '**/model/**',
+                '**/dto/**',
+                '**/config/**',
+                '**/ImageSearchApplication.class'
+            ])
+        }))
+    }
+}
+
+jacocoTestCoverageVerification {
+    violationRules {
+        rule {
+            limit {
+                minimum = 0.70  // 70% minimum coverage
+            }
+        }
+    }
+}
+
+check.dependsOn jacocoTestCoverageVerification

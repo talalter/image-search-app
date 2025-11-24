@@ -1,5 +1,5 @@
 from typing import List, Optional
-from faiss_handler import FaissManager
+from search_client import SearchServiceClient
 from fastapi import UploadFile, File, Body, APIRouter, Form, HTTPException, BackgroundTasks, Depends # type: ignore
 from pydantic_models import (
     FolderDeleteRequest,
@@ -10,7 +10,6 @@ from pydantic_models import (
     UploadImagesResponse
 )
 from database import add_folder, add_image_to_images, get_image_path_by_image_id, get_folders_by_user_id, get_folders_by_user_id_and_folder_name, delete_folder_by_id
-from utils import embed_image
 import io
 import os
 import shutil
@@ -27,14 +26,14 @@ if not logger.handlers:
 
 
 router = APIRouter()
-faiss_manager = FaissManager()
+search_client = SearchServiceClient()
 
 
 def process_images_background(user_id: int, folder_id: int, image_paths: List[tuple]):
     """
-    Background task to process images: generate embeddings and add to FAISS index.
+    Background task to process images: send to search service for embedding generation.
     This runs after the user receives a successful response.
-    
+
     Args:
         user_id: User ID
         folder_id: Folder ID
@@ -42,17 +41,19 @@ def process_images_background(user_id: int, folder_id: int, image_paths: List[tu
     """
     logger.info("[BACKGROUND] Starting processing of %d images for user %s, folder %s", len(image_paths), user_id, folder_id)
 
-    for image_id, file_path in image_paths:
-        try:
-            # Load image and generate embedding
-            image = Image.open(file_path).convert("RGB")
-            embedding = embed_image(image)
+    try:
+        # Prepare image data for search service
+        images = [
+            {"image_id": image_id, "file_path": file_path}
+            for image_id, file_path in image_paths
+        ]
 
-            # Add to FAISS index
-            faiss_manager.add_vector_to_faiss(user_id, folder_id, embedding, image_id)
-            logger.info("[BACKGROUND] Processed image %s (path=%s)", image_id, file_path)
-        except Exception:
-            logger.exception("[BACKGROUND] Error processing image %s (path=%s)", image_id, file_path)
+        # Call search service to embed all images at once
+        search_client.embed_images(user_id, folder_id, images)
+        logger.info("[BACKGROUND] Successfully processed %d images", len(image_paths))
+
+    except Exception:
+        logger.exception("[BACKGROUND] Error processing images for folder %s", folder_id)
     
 
 
@@ -89,14 +90,19 @@ async def delete_folder(request: FolderDeleteRequest = Body(...)):
                 delete_folder_by_id(folder_id, user_id)
 
                 # 2. Delete physical image files from filesystem
-                # Use parent directory (project root) for shared images directory
-                base_dir = os.path.dirname(os.getcwd())
-                folder_path = os.path.join(base_dir, "images", str(user_id), str(folder_id))
+                # Get project root directory
+                current_dir = os.getcwd()
+                if os.path.basename(current_dir) == 'python-backend':
+                    project_root = os.path.dirname(current_dir)
+                else:
+                    project_root = current_dir
+
+                folder_path = os.path.join(project_root, "data", "uploads", "images", str(user_id), str(folder_id))
                 if os.path.exists(folder_path):
                     shutil.rmtree(folder_path)
 
-                # 3. Delete FAISS vector index
-                faiss_manager.delete_faiss_index(user_id, folder_id)
+                # 3. Delete FAISS vector index via search service
+                search_client.delete_index(user_id, folder_id)
                 deleted_count += 1
             else:
                 # Folder is shared with user - just remove the share
@@ -148,9 +154,9 @@ async def upload_multiple_images(
     # Check if folder already exists, if not create it
     folder_id = get_folders_by_user_id_and_folder_name(user_id, folderName)
     if folder_id is None:
-        # Create new folder and FAISS index
+        # Create new folder and FAISS index via search service
         folder_id = add_folder(user_id, folderName)
-        faiss_manager.create_faiss_index(user_id, folder_id)
+        search_client.create_index(user_id, folder_id)
     # If folder exists, we'll just add images to the existing folder and index
     
     uploaded_count = 0
@@ -161,9 +167,13 @@ async def upload_multiple_images(
         # Validate file type
         if not file.filename.lower().endswith(('.png', '.jpg', '.jpeg')):
             raise HTTPException(status_code=400, detail=f"Invalid file type: {file.filename}")
-        
+
+        # Extract just the filename (strip any directory path from browser folder upload)
+        # When uploading folders, browsers may include paths like "india/taj mahal.jpeg"
+        filename_only = os.path.basename(file.filename)
+
         # Save image and create database record (fast operations)
-        s3_key = f"images/{user_id}/{folder_id}/{file.filename}"
+        s3_key = f"images/{user_id}/{folder_id}/{filename_only}"
         image_id = add_image_to_images(user_id, s3_key, folder_id)
         
         # Reset file pointer and save
@@ -239,19 +249,20 @@ def search_images(params: SearchImageRequest = Depends()):
                 else:
                     folder_owner_map[fid] = access.get('owner_id')
     
-    # Perform the search with folder ownership information
-    distances, indices = faiss_manager.search_with_ownership(query, folder_id_list, folder_owner_map, top_k)
-    
+    # Perform the search via search service with folder ownership information
+    distances, indices = search_client.search(user_id, query, folder_id_list, folder_owner_map, top_k)
+
     # Build response using Pydantic models for type safety and validation
     results = []
-    for i in range(len(indices[0])):
-        image_id = indices[0][i]
-        s3_key = get_image_path_by_image_id(image_id)
-        image_url = get_path_to_save(s3_key)
-        similarity = distances[0][i]
-        # Using ImageSearchResult model ensures consistent response structure
-        results.append(ImageSearchResult(image=image_url, similarity=float(similarity)))
-    
+    if distances and indices and len(indices[0]) > 0:
+        for i in range(len(indices[0])):
+            image_id = indices[0][i]
+            s3_key = get_image_path_by_image_id(image_id)
+            image_url = get_path_to_save(s3_key)
+            similarity = distances[0][i]
+            # Using ImageSearchResult model ensures consistent response structure
+            results.append(ImageSearchResult(image=image_url, similarity=float(similarity)))
+
     return SearchImageResponse(results=results)  
 
 

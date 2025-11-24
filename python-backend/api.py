@@ -31,7 +31,9 @@ register_exception_handlers(app)
 
 if storage_backend == 'local':
     BASE_DIR = Path(__file__).resolve().parent      # .../python-backend
-    IMAGES_ROOT = (BASE_DIR.parent / "images").resolve()   # .../images (shared root level)
+    IMAGES_ROOT = (BASE_DIR.parent / "data" / "uploads" / "images").resolve()   # .../data/uploads/images
+    # Create the directory if it doesn't exist
+    IMAGES_ROOT.mkdir(parents=True, exist_ok=True)
     app.mount("/images", StaticFiles(directory=str(IMAGES_ROOT)), name="images")
 
 app.include_router(user_router)

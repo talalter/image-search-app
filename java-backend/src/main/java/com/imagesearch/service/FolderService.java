@@ -283,7 +283,7 @@ public class FolderService {
             Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
                 ? currentDir.getParent()
                 : currentDir;
-            Path imagesRoot = projectRoot.resolve("images");
+            Path imagesRoot = projectRoot.resolve("data").resolve("uploads").resolve("images");
 
             Path folderPath = imagesRoot.resolve(userId.toString()).resolve(folderId.toString());
             if (Files.exists(folderPath)) {
