@@ -22,10 +22,10 @@ This ensures the Java backend returns JSON fields identical to Python, so the Re
 |---------|-------------------|------------------|
 | **Framework** | Spring Boot 3.2 | FastAPI 0.104 |
 | **Language** | Java 17 | Python 3.12 |
-| **Database** | PostgreSQL + JPA/Hibernate | SQLite + direct SQL |
+| **Database** | PostgreSQL + JPA/Hibernate | PostgreSQL + psycopg2 |
 | **Port** | 8080 | 8000 |
 | **JSON Format** | snake_case (configured) | snake_case (default) |
-| **Architecture** | Microservices (calls Python search service) | Monolithic (CLIP + FAISS embedded) |
+| **Architecture** | Microservices (calls Python search service) | Microservices (calls Python search service) |
 | **Password Hashing** | BCrypt | PBKDF2-HMAC-SHA256 |
 | **Build Tool** | Gradle 8.5 | pip + requirements.txt |
 | **Best For** | Demonstrating Java enterprise skills | Fast prototyping, AI/ML integration |
@@ -133,7 +133,12 @@ React Frontend (3000)
      ↓ HTTP
 Python Backend (8000)
      ├── FastAPI routes
-     ├── Database (SQLite)
+     ├── Database (PostgreSQL)
+     └── Calls Search Service (5000)
+          ├── CLIP embeddings
+          └── FAISS search → Python Search Service (5000)
+     ├── FastAPI routes
+     ├── Database (PostgreSQL)
      ├── CLIP embeddings
      └── FAISS search
 ```
@@ -146,8 +151,8 @@ Python Backend (8000)
 - ✅ Good for prototyping
 
 **Cons:**
-- ❌ SQLite not ideal for production
-- ❌ Tight coupling of concerns
+- ❌ Same PostgreSQL as Java backend
+- ❌ Still uses microservice architecture
 - ❌ Harder to scale
 - ❌ Doesn't demonstrate Java skills
 
@@ -206,18 +211,22 @@ python-backend/
 
 ---
 
-## Database Migration (Python → Java)
+---
 
-If you have data in Python backend (SQLite) and want to move to Java backend (PostgreSQL):
+## Database Migration
+
+Both backends now use PostgreSQL with the same schema, so switching between them is seamless:
+- ✅ Same database (PostgreSQL)
+- ✅ Same schema and tables
+- ✅ No data migration needed
+- ✅ Just change the backend service and frontend configuration
 
 ```bash
-# Export from SQLite
-sqlite3 database.sqlite .dump > dump.sql
-
-# Convert and import to PostgreSQL
-# (Manual conversion needed due to schema differences)
-# OR just start fresh with Java backend
+# Switch from Python to Java (or vice versa)
+# Just stop one backend and start the other - same database!
 ```
+
+---
 
 ---
 

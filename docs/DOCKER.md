@@ -2,7 +2,7 @@
 
 ## Quick Start with Docker
 
-The easiest way to run the Image Search App is using Docker Compose:
+The Image Search App supports Docker deployment with the current microservices architecture.
 
 ```bash
 # Build and start all services
@@ -14,25 +14,31 @@ docker-compose up -d --build
 
 The application will be available at:
 - **Frontend:** http://localhost:3000
-- **Backend API:** http://localhost:9999
+- **Backend API:** http://localhost:8000
 
 ## Architecture
 
 The Docker setup includes:
 
 1. **Backend Container** (FastAPI + Python 3.12)
-   - Runs on port 9999
-   - Includes CLIP model and FAISS for vector search
-   - Persists data via volume mounts
+   - Runs on port 8000
+   - Handles user management, authentication, and business logic
+   - Uses PostgreSQL for data persistence
+   - Communicates with search service for AI operations
 
 2. **Frontend Container** (React + Nginx)
    - Runs on port 80 (mapped to host port 3000)
    - Serves optimized production build
    - Proxies API requests to backend
 
-3. **Network**
-   - Both containers communicate via `image-search-network`
-   - Frontend can reach backend at `http://backend:9999`
+3. **PostgreSQL Container** (PostgreSQL 15)
+   - Runs on port 5432
+   - Stores user accounts, folders, images metadata
+   - Persistent volume for data durability
+
+4. **Network**
+   - All containers communicate via `image-search-network`
+   - Frontend can reach backend at `http://backend:8000`
 
 ## Docker Commands
 
@@ -96,30 +102,34 @@ docker-compose exec frontend /bin/sh
 
 The following directories are mounted as volumes to persist data:
 
-- `./backend/images` - Uploaded images
-- `./backend/faisses_indexes` - FAISS vector indexes
-- `./backend/database.sqlite` - SQLite database
+- `./data/uploads/` - Uploaded images
+- `./data/indexes/` - FAISS vector indexes
+- PostgreSQL data volume - Database tables and data
 
 **Note:** These directories will be created automatically when you start the containers.
 
 ## Environment Variables
 
-You can customize the backend by creating a `.env` file in the backend directory:
+You can customize the backend by creating a `.env` file:
 
 ```env
+# Database
+DB_USERNAME=imageuser
+DB_PASSWORD=yourpassword
+DB_HOST=postgres
+DB_PORT=5432
+DB_NAME=imagesearch
+
+# Storage
 STORAGE_BACKEND=local
-AWS_ACCESS_KEY_ID=your_key
-AWS_SECRET_ACCESS_KEY=your_secret
-AWS_BUCKET_NAME=your_bucket
-AWS_REGION=us-east-1
 ```
 
 Then update `docker-compose.yml` to use the env file:
 
 ```yaml
-backend:
+python-backend:
   env_file:
-    - ./backend/.env
+    - .env
 ```
 
 ## Production Deployment
@@ -145,9 +155,9 @@ frontend:
   ports:
     - "8080:80"  # Change from 3000 to 8080
 
-backend:
+python-backend:
   ports:
-    - "8000:9999"  # Change from 9999 to 8000
+    - "8001:8000"  # Change from 8000 to 8001
 ```
 
 ### Resource Limits
@@ -185,11 +195,11 @@ curl http://localhost:3000/  # Frontend
 
 ```bash
 # Check logs
-docker-compose logs backend
+docker-compose logs python-backend
 
 # Common issues:
-# - Port 9999 already in use
-# - Insufficient memory for CLIP model
+# - Port 8000 already in use
+# - PostgreSQL connection failed
 # - Missing dependencies
 ```
 
@@ -197,21 +207,21 @@ docker-compose logs backend
 
 ```bash
 # Verify network
-docker network inspect image-search-app_image-search-network
+docker network inspect image-search-network
 
 # Check if backend is running
 docker-compose ps
 
 # Test backend from frontend container
-docker-compose exec frontend wget -O- http://backend:9999/
+docker-compose exec frontend wget -O- http://python-backend:8000/
 ```
 
 ### Permission issues with volumes
 
 ```bash
 # Fix permissions on Linux
-sudo chown -R $USER:$USER ./backend/images
-sudo chown -R $USER:$USER ./backend/faisses_indexes
+sudo chown -R $USER:$USER ./data/uploads
+sudo chown -R $USER:$USER ./data/indexes
 ```
 
 ### Clean slate restart
@@ -292,7 +302,7 @@ The Dockerfiles already use:
 
 ### Memory considerations
 
-The CLIP model requires ~1GB of RAM. Ensure your Docker daemon has sufficient memory allocated:
+The application requires sufficient memory for PostgreSQL and the Python backend. Ensure your Docker daemon has sufficient memory allocated:
 - **Minimum:** 2GB
 - **Recommended:** 4GB+
 
@@ -322,19 +332,18 @@ services:
 # Create backup directory
 mkdir backups
 
-# Backup database
-docker-compose exec backend cp database.sqlite /tmp/
-docker cp image-search-backend:/tmp/database.sqlite ./backups/
+# Backup PostgreSQL database
+docker-compose exec postgres pg_dump -U imageuser imagesearch > backups/db-$(date +%Y%m%d).sql
 
 # Backup images and indexes
-tar -czf backups/data-$(date +%Y%m%d).tar.gz backend/images backend/faisses_indexes
+tar -czf backups/data-$(date +%Y%m%d).tar.gz data/uploads data/indexes
 ```
 
 ### Restore data
 
 ```bash
-# Restore database
-docker cp ./backups/database.sqlite image-search-backend:/app/
+# Restore PostgreSQL database
+cat backups/db-20250103.sql | docker-compose exec -T postgres psql -U imageuser imagesearch
 
 # Restore images and indexes
 tar -xzf backups/data-20250103.tar.gz

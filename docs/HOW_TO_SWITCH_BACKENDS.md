@@ -248,7 +248,7 @@ Both backends use the **exact same RESTful API endpoints**:
 |---------|--------------|----------------|
 | Framework | Spring Boot 3.2 | FastAPI 0.104 |
 | Port | 8080 | 8000 |
-| Database | PostgreSQL | SQLite |
+| Database | PostgreSQL | PostgreSQL |
 | Search | Calls microservice (port 5000) | Built-in FAISS |
 | Architecture | Microservices | Monolithic |
 | Best for | Interviews, Production | Quick dev, Testing |

@@ -1,11 +1,21 @@
 # Complete Setup Guide
 
-This guide will help you run the Image Search application with the new **microservices architecture**.
+This guide will help you run the Image Search application with the **microservices architecture**.
 
 ## Architecture Overview
 
+You can choose between two backend options:
+
+**Option 1: Java Backend (Microservices)**
 ```
 React (port 3000) → Java Backend (port 8080) → Python Search Service (port 5000)
+                           ↓
+                    PostgreSQL (port 5432)
+```
+
+**Option 2: Python Backend (Simpler)**
+```
+React (port 3000) → Python Backend (port 8000) → Python Search Service (port 5000)
                            ↓
                     PostgreSQL (port 5432)
 ```
@@ -14,7 +24,7 @@ React (port 3000) → Java Backend (port 8080) → Python Search Service (port 5
 
 Install these before starting:
 
-- ✅ **Java 17+** - [Download OpenJDK](https://adoptium.net/)
+- ✅ **Java 17+** (for Java backend) - [Download OpenJDK](https://adoptium.net/)
 - ✅ **PostgreSQL 15+** - See [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md)
 - ✅ **Python 3.12+** - [Download Python](https://www.python.org/downloads/)
 - ✅ **Node.js 18+** - [Download Node](https://nodejs.org/)
@@ -73,7 +83,9 @@ python app.py
 
 ✅ **Verify**: You should see `Uvicorn running on http://0.0.0.0:5000`
 
-### Step 4: Start Java Backend
+### Step 4: Start Backend (Choose ONE)
+
+#### Option A: Java Backend
 
 ```bash
 # Terminal 2
@@ -101,6 +113,34 @@ export DB_PASSWORD=imagepass123
 - `Tomcat started on port(s): 8080`
 - Hibernate creating database tables
 
+#### Option B: Python Backend
+
+```bash
+# Terminal 2
+cd python-backend
+
+# Create virtual environment
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set database credentials
+export DB_USERNAME=imageuser
+export DB_PASSWORD=imagepass123
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=imagesearch
+
+# Run the backend
+uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+✅ **Verify**: You should see:
+- `Application startup complete`
+- `Uvicorn running on http://0.0.0.0:8000`
+
 ### Step 5: Start React Frontend
 
 ```bash
@@ -110,11 +150,14 @@ cd frontend
 # Install dependencies (first time only)
 npm install
 
-# Start development server
+# Start development server (defaults to Java backend on port 8080)
 npm start
+
+# OR if using Python backend
+REACT_APP_API_URL=http://localhost:8000 npm start
 ```
 
-✅ **Verify**: Browser opens automatically at http://localhost:3000
+✅ **Verify**: Browser opens automatically at [http://localhost:3000](http://localhost:3000)
 
 ## Testing the Application
 
@@ -163,11 +206,29 @@ lsof -i :8080
 kill -9 <PID>
 ```
 
+### Python Backend Won't Start
+
+**Error**: `No module named 'psycopg2'`
+**Solution**: Virtual environment not activated or dependencies not installed
+```bash
+cd python-backend
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+**Error**: `Port 8000 already in use`
+**Solution**: Kill the process
+```bash
+lsof -i :8000
+kill -9 <PID>
+```
+
 ### Python Service Won't Start
 
 **Error**: `No module named 'torch'`
 **Solution**: Virtual environment not activated
 ```bash
+cd search-service
 source venv/bin/activate
 pip install -r requirements.txt
 ```
@@ -182,12 +243,12 @@ kill -9 <PID>
 ### Frontend Issues
 
 **Error**: `Cannot GET /api/users/login`
-**Solution**: Java backend not running or wrong port
-- Check Java backend is running on port 8080
-- Check [api.js](frontend/src/utils/api.js) has `API_BASE_URL = 'http://localhost:8080'`
+**Solution**: Backend not running or wrong port
+- Check backend is running (8080 for Java, 8000 for Python)
+- Check [api.js](frontend/src/utils/api.js) has correct `API_BASE_URL`
 
 **Error**: CORS errors
-**Solution**: Check [CorsConfig.java](java-backend/src/main/java/com/imagesearch/config/CorsConfig.java) allows `http://localhost:3000`
+**Solution**: Check backend CORS configuration allows `http://localhost:3000`
 
 ### Search Not Working
 
@@ -215,9 +276,13 @@ kill -9 <PID>
 curl http://localhost:5000/
 # Expected: {"service":"Image Search Microservice","status":"running"}
 
-# 2. Java backend health
-curl http://localhost:8080/actuator/health
-# Expected: {"status":"UP"}
+# 2. Java backend health (if using Java)
+curl http://localhost:8080/
+# Expected: {"message":"..."}
+
+# 2b. Python backend health (if using Python)
+curl http://localhost:8000/
+# Expected: {"message":"..."}
 
 # 3. Database connection
 psql -U imageuser -d imagesearch -c "\dt"
@@ -240,6 +305,16 @@ cd java-backend
 # - "Started ImageSearchApplication"
 ```
 
+**Python Backend:**
+```bash
+cd python-backend
+uvicorn app:app --host 0.0.0.0 --port 8000
+# Look for:
+# - "Database connected successfully"
+# - "Application startup complete"
+# - "Uvicorn running on http://0.0.0.0:8000"
+```
+
 **Python Service:**
 ```bash
 cd search-service
@@ -258,6 +333,12 @@ python app.py
 2. Gradle auto-recompiles (if using `--continuous` flag)
 3. Or restart: `./gradlew bootRun`
 
+### Making Changes to Python Backend
+
+1. Edit code in `python-backend/`
+2. Stop service (Ctrl+C)
+3. Restart: `uvicorn app:app --host 0.0.0.0 --port 8000`
+
 ### Making Changes to React Frontend
 
 1. Edit code in `frontend/src/`
@@ -275,9 +356,10 @@ For production deployment, consider:
 
 1. **Database**: Use managed PostgreSQL (AWS RDS, Google Cloud SQL)
 2. **Java Backend**: Package as JAR and deploy to cloud (AWS Elastic Beanstalk, Heroku)
-3. **Python Service**: Containerize with Docker and deploy separately
-4. **Frontend**: Build and serve static files with Nginx or CDN
-5. **Environment Variables**: Use secrets manager, never commit passwords
+3. **Python Backend**: Containerize with Docker and deploy separately
+4. **Python Service**: Containerize with Docker and deploy separately
+5. **Frontend**: Build and serve static files with Nginx or CDN
+6. **Environment Variables**: Use secrets manager, never commit passwords
 
 Example build commands:
 ```bash
@@ -285,6 +367,10 @@ Example build commands:
 cd java-backend
 ./gradlew clean build
 java -jar build/libs/image-search-backend-1.0.0.jar
+
+# Python backend
+cd python-backend
+# Use Docker or uvicorn with production server
 
 # React frontend
 cd frontend
@@ -294,12 +380,12 @@ npm run build
 
 ## Next Steps
 
-- ✅ Run all three services
+- ✅ Run all services
 - ✅ Create an account
 - ✅ Upload some images
 - ✅ Test semantic search
 - ✅ Try sharing folders
-- ✅ Check the [CV_BULLET_POINTS.md](CV_BULLET_POINTS.md) for interview prep
+- ✅ Check the documentation for more details
 
 ## Getting Help
 
@@ -308,5 +394,6 @@ If you encounter issues:
 2. Review logs in each terminal
 3. Verify all prerequisites are installed
 4. Check [POSTGRESQL_SETUP.md](POSTGRESQL_SETUP.md) for database issues
+5. Check [HOW_TO_SWITCH_BACKENDS.md](HOW_TO_SWITCH_BACKENDS.md) for backend switching
 
 Happy coding! 🚀

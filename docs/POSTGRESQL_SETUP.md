@@ -4,11 +4,11 @@ This guide explains how to set up PostgreSQL for the Image Search application.
 
 ## Why PostgreSQL?
 
-The Java backend uses PostgreSQL instead of SQLite because:
+Both backends (Java and Python) use PostgreSQL instead of SQLite because:
 - **Better concurrency**: PostgreSQL handles multiple simultaneous connections without locking
 - **Production-ready**: Industry-standard RDBMS used by major companies
 - **ACID compliance**: Full transaction support with rollback capabilities
-- **Spring Boot integration**: Excellent support via Spring Data JPA
+- **Framework integration**: Excellent support via Spring Data JPA (Java) and psycopg2 (Python)
 
 ## Installation
 
@@ -53,7 +53,9 @@ GRANT ALL PRIVILEGES ON DATABASE imagesearch TO imageuser;
 \q
 ```
 
-### 3. Configure Java backend
+### 3. Configure backend
+
+**For Java backend:**
 
 Update `java-backend/src/main/resources/application.yml`:
 
@@ -71,9 +73,20 @@ export DB_USERNAME=imageuser
 export DB_PASSWORD=your_password_here
 ```
 
+**For Python backend:**
+
+Use environment variables:
+```bash
+export DB_USERNAME=imageuser
+export DB_PASSWORD=your_password_here
+export DB_HOST=localhost
+export DB_PORT=5432
+export DB_NAME=imagesearch
+```
+
 ### 4. Verify connection
 
-The Java backend will automatically create tables on first run using Hibernate DDL.
+**Java backend** will automatically create tables on first run using Hibernate DDL.
 
 Check the logs when starting the application:
 ```
@@ -83,6 +96,8 @@ Hibernate: create table images (...)
 Hibernate: create table sessions (...)
 Hibernate: create table folder_shares (...)
 ```
+
+**Python backend** will create tables automatically on first run using the database initialization script.
 
 ## Database Schema
 

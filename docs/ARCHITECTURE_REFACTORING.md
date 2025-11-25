@@ -9,7 +9,7 @@ This document describes the architectural improvements made to the Image Search 
 ### Issues Before Refactoring
 
 1. **Data Storage Duplication**
-   - Multiple image directories: `/images/`, `/python-backend/faisses_indexes/`
+   - Multiple image directories: `/images/`, `/python-python-backend/faisses_indexes/`
    - Multiple FAISS index locations with inconsistent naming
    - Unclear ownership and data flow between services
 
@@ -39,8 +39,8 @@ image-search-app/
 │   └── indexes/                   # All FAISS indexes (only search-service writes)
 │       └── {userId}/{folderId}/   # Mirrors upload structure
 │
-├── java-backend/                  # Spring Boot service
-├── python-backend/                # FastAPI service (alternative)
+├── java-python-backend/                  # Spring Boot service
+├── python-python-backend/                # FastAPI service (alternative)
 ├── search-service/                # AI microservice (shared)
 ├── frontend/                      # React app
 ├── scripts/                       # Operational scripts
@@ -79,7 +79,7 @@ data/
 ```bash
 __pycache__/              # Root build artifacts
 venv/                     # Redundant virtual environment
-python-backend/faisses_indexes/  # Typo directory
+python-python-backend/faisses_indexes/  # Typo directory
 scripts/venv/             # Unnecessary venv
 ```
 
@@ -92,17 +92,17 @@ images/                   # Old images (now gitignored)
 
 #### Java Backend
 
-**File:** [java-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java](../java-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java)
+**File:** [java-python-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java](../java-python-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java)
 - Changed: `images` → `data/uploads`
 - Maps `/images/**` URLs to `{project-root}/data/uploads/`
 
-**File:** [java-backend/src/main/java/com/imagesearch/service/ImageService.java](../java-backend/src/main/java/com/imagesearch/service/ImageService.java)
+**File:** [java-python-backend/src/main/java/com/imagesearch/service/ImageService.java](../java-python-backend/src/main/java/com/imagesearch/service/ImageService.java)
 - Changed: Upload path from `images/` → `data/uploads/`
 - Structure: `{project-root}/data/uploads/{userId}/{folderId}/`
 
 #### Python Backend
 
-**File:** [python-backend/aws_handler.py](../python-backend/aws_handler.py)
+**File:** [python-python-backend/aws_handler.py](../python-python-backend/aws_handler.py)
 - Simplified path logic
 - Now uses: `{project-root}/data/uploads/{key}`
 - Removed complex parent directory calculations
@@ -185,7 +185,7 @@ data/indexes/*
 # Legacy cleanup (for backward compatibility)
 images/*
 search-service/faiss_indexes/*
-python-backend/faisses_indexes/*
+python-python-backend/faisses_indexes/*
 ```
 
 ### 5. Git Configuration
@@ -271,7 +271,7 @@ node_modules/
 5. **Cleanup old directories (optional):**
    ```bash
    rm -rf images/
-   rm -rf python-backend/faisses_indexes/
+   rm -rf python-python-backend/faisses_indexes/
    ```
 
 ### For New Installations
@@ -287,9 +287,9 @@ docker-compose -f docker-compose.python.yml up
 
 ### Modified Files
 - [.gitignore](../.gitignore)
-- [java-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java](../java-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java)
-- [java-backend/src/main/java/com/imagesearch/service/ImageService.java](../java-backend/src/main/java/com/imagesearch/service/ImageService.java)
-- [python-backend/aws_handler.py](../python-backend/aws_handler.py)
+- [java-python-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java](../java-python-backend/src/main/java/com/imagesearch/config/StaticResourceConfig.java)
+- [java-python-backend/src/main/java/com/imagesearch/service/ImageService.java](../java-python-backend/src/main/java/com/imagesearch/service/ImageService.java)
+- [python-python-backend/aws_handler.py](../python-python-backend/aws_handler.py)
 - [search-service/search_handler.py](../search-service/search_handler.py)
 - [search-service/embedding_service.py](../search-service/embedding_service.py)
 - [docker-compose.python.yml](../docker-compose.python.yml)
@@ -304,7 +304,7 @@ docker-compose -f docker-compose.python.yml up
 ### Removed
 - `__pycache__/` (root)
 - `venv/` (root)
-- `python-backend/faisses_indexes/`
+- `python-python-backend/faisses_indexes/`
 - `scripts/venv/`
 
 ## Testing Checklist

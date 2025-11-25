@@ -30,7 +30,7 @@ This project follows industry-standard testing practices with comprehensive test
 
 ```
 image-search-app/
-├── python-backend/
+├── python-python-backend/
 │   ├── tests/
 │   │   ├── __init__.py
 │   │   ├── conftest.py                 # Shared fixtures
@@ -41,7 +41,7 @@ image-search-app/
 │   ├── pytest.ini                      # Pytest configuration
 │   └── requirements-test.txt           # Test dependencies
 │
-└── java-backend/
+└── java-python-backend/
     ├── src/test/java/
     │   └── com/imagesearch/
     │       ├── controller/

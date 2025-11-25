@@ -7,7 +7,7 @@ Your application uses **3 different ports** for different services:
 | Service | Port | Purpose | Database |
 |---------|------|---------|----------|
 | **Java Backend** | 8080 | Main backend (Spring Boot) | PostgreSQL |
-| **Python Backend** | 8000 | Alternative backend (FastAPI) | SQLite |
+| **Python Backend** | 8000 | Alternative backend (FastAPI) | PostgreSQL |
 | **Python Search Service** | 5000 | AI microservice (CLIP + FAISS) | None |
 | **React Frontend** | 3000 | User interface | None |
 
@@ -68,7 +68,7 @@ REACT_APP_BACKEND=java npm start
          ↓
 ┌─────────────────┐
 │ Python Backend  │  Port 8000
-│  FastAPI        │  SQLite Database
+│  FastAPI        │  PostgreSQL Database
 │  (Monolithic)   │  CLIP + FAISS Built-in
 └─────────────────┘
 ```
