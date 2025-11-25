@@ -26,13 +26,14 @@ WORKDIR /app
 
 # Create non-root user for security
 RUN addgroup -S spring && adduser -S spring -G spring
+
+# Create directories for runtime data (before switching user)
+RUN mkdir -p images && chown -R spring:spring /app
+
 USER spring:spring
 
 # Copy the built JAR from build stage
 COPY --from=build /app/build/libs/*.jar app.jar
-
-# Create directories for runtime data
-RUN mkdir -p images
 
 # Expose port
 EXPOSE 8080

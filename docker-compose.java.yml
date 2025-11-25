@@ -12,22 +12,21 @@ services:
       dockerfile: Dockerfile
     container_name: imagesearch-java-backend
     environment:
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/imagesearch
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://imagesearch-postgres:5432/imagesearch
       - DB_USERNAME=imageuser
       - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
-      - SEARCH_SERVICE_URL=http://search-service:5000
+      - SEARCH_SERVICE_URL=http://imagesearch-search-service:5000
       - STORAGE_BACKEND=local
       - IMAGES_ROOT=/app/data/uploads
     volumes:
       # Mount shared data directory (write images, read indexes)
-      - app-data:/app/data
+      - image-search-app_app-data:/app/data
     ports:
       - "8080:8080"
     networks:
-      - imagesearch-network
-    external_links:
-      - imagesearch-postgres:postgres
-      - imagesearch-search-service:search-service
+      image-search-app_imagesearch-network:
+        aliases:
+          - backend
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:8080/api/health"]
@@ -49,7 +48,7 @@ services:
     depends_on:
       - java-backend
     networks:
-      - imagesearch-network
+      - image-search-app_imagesearch-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
@@ -59,10 +58,11 @@ services:
       start_period: 10s
 
 networks:
-  imagesearch-network:
+  image-search-app_imagesearch-network:
     external: true
 
 volumes:
   # Use shared volume from docker-compose.shared.yml
-  app-data:
+  image-search-app_app-data:
     external: true
+    name: image-search-app_app-data

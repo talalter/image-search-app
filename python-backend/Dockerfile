@@ -13,14 +13,14 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements first for better caching
-COPY ../requirements.txt .
+COPY requirements.txt .
 
 # Install Python dependencies
 # Note: PyTorch CPU-only would be smaller, but requires extra index URL
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy backend application code
-COPY . .
+COPY python-backend/ .
 
 # Create directories for runtime data
 RUN mkdir -p images faisses_indexes

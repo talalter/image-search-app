@@ -13,24 +13,23 @@ services:
     container_name: imagesearch-python-backend
     environment:
       - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/imagesearch
-      - DB_HOST=postgres
+      - DB_HOST=imagesearch-postgres
       - DB_PORT=5432
       - DB_NAME=imagesearch
       - DB_USERNAME=imageuser
       - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
       - PYTHONUNBUFFERED=1
       - STORAGE_BACKEND=local
-      - SEARCH_SERVICE_URL=http://search-service:5000
+      - SEARCH_SERVICE_URL=http://imagesearch-search-service:5000
     volumes:
       # Mount shared data directory (write images, access database)
-      - app-data:/app/data
+      - image-search-app_app-data:/app/data
     ports:
       - "8000:8000"
     networks:
-      - imagesearch-network
-    external_links:
-      - imagesearch-postgres:postgres
-      - imagesearch-search-service:search-service
+      image-search-app_imagesearch-network:
+        aliases:
+          - backend
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/"]
@@ -52,7 +51,7 @@ services:
     depends_on:
       - python-backend
     networks:
-      - imagesearch-network
+      - image-search-app_imagesearch-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
@@ -62,10 +61,11 @@ services:
       start_period: 10s
 
 networks:
-  imagesearch-network:
+  image-search-app_imagesearch-network:
     external: true
 
 volumes:
   # Use shared volume from docker-compose.shared.yml
-  app-data:
+  image-search-app_app-data:
     external: true
+    name: image-search-app_app-data

@@ -1,47 +1,103 @@
+# Standalone Docker Compose - All services in one file
+# This is a complete setup with Python backend, frontend, database, and search service
+# Run with: docker-compose up -d
+
 version: '3.8'
 
 services:
-  # Backend FastAPI service
-  backend:
-    build:
-      context: .
-      dockerfile: backend/Dockerfile
-    container_name: image-search-backend
-    ports:
-      - "8000:8000"
-    volumes:
-      # Persist uploaded images
-      - ./backend/images:/app/images
-      # Persist FAISS indexes
-      - ./backend/faisses_indexes:/app/faisses_indexes
-      # Persist SQLite database in a data directory
-      - backend-db:/app/data
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: imagesearch-postgres
     environment:
-      - STORAGE_BACKEND=local
-      - PYTHONUNBUFFERED=1
-      - DB_DIR=/app/data
+      POSTGRES_DB: imagesearch
+      POSTGRES_USER: imageuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
     networks:
-      - image-search-network
+      - imagesearch-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8000/')"]
+      test: ["CMD-SHELL", "pg_isready -U imageuser -d imagesearch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Python Search Service (CLIP + FAISS)
+  search-service:
+    build:
+      context: ./search-service
+      dockerfile: Dockerfile
+    container_name: imagesearch-search-service
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      - app-data:/app/data
+    ports:
+      - "5000:5000"
+    networks:
+      - imagesearch-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s
+      start_period: 60s
 
-  # Frontend React/Nginx service
+  # Python Backend (FastAPI)
+  backend:
+    build:
+      context: .
+      dockerfile: python-backend/Dockerfile
+    container_name: imagesearch-backend
+    environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=imagesearch
+      - DB_USERNAME=imageuser
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
+      - PYTHONUNBUFFERED=1
+      - STORAGE_BACKEND=local
+      - SEARCH_SERVICE_URL=http://search-service:5000
+    volumes:
+      - app-data:/app/data
+    ports:
+      - "8000:8000"
+    networks:
+      imagesearch-network:
+        aliases:
+          - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      search-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # React Frontend (Nginx)
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: image-search-frontend
+      args:
+        - REACT_APP_API_URL=http://localhost:8000
+    container_name: imagesearch-frontend
     ports:
       - "3000:80"
     depends_on:
       - backend
     networks:
-      - image-search-network
+      - imagesearch-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
@@ -51,9 +107,11 @@ services:
       start_period: 10s
 
 networks:
-  image-search-network:
+  imagesearch-network:
     driver: bridge
 
 volumes:
-  # Named volume for SQLite database persistence
-  backend-db:
+  postgres-data:
+    driver: local
+  app-data:
+    driver: local
