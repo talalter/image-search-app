@@ -1,5 +1,6 @@
 package com.imagesearch.controller;
 
+import com.imagesearch.exception.BadRequestException;
 import com.imagesearch.model.dto.request.DeleteFoldersRequest;
 import com.imagesearch.model.dto.request.ShareFolderRequest;
 import com.imagesearch.model.dto.response.FolderResponse;
@@ -48,6 +49,7 @@ public class FolderController {
         Long userId = sessionService.validateTokenAndGetUserId(token);
         logger.info("Get folders request for user: {}", userId);
 
+        @SuppressWarnings("null")
         List<FolderResponse> folders = folderService.getAllAccessibleFolders(userId);
 
         // Separate owned and shared for backward compatibility
@@ -66,6 +68,7 @@ public class FolderController {
      * Delete folders.
      * DELETE /api/folders
      */
+    @SuppressWarnings("null")
     @DeleteMapping
     public ResponseEntity<MessageResponse> deleteFolders(@Valid @RequestBody DeleteFoldersRequest request) {
         Long userId = sessionService.validateTokenAndGetUserId(request.getToken());
@@ -81,8 +84,29 @@ public class FolderController {
      * Share a folder with another user.
      * POST /api/folders/share
      */
+    @SuppressWarnings("null")
     @PostMapping("/share")
-    public ResponseEntity<MessageResponse> shareFolder(@Valid @RequestBody ShareFolderRequest request) {
+    public ResponseEntity<MessageResponse> shareFolder(@RequestBody ShareFolderRequest request) {
+        // Debug logging first (before validation)
+        logger.info("Received ShareFolderRequest: token={}, folderId={}, targetUsername={}, permission={}", 
+            request.getToken(), request.getFolderId(), request.getTargetUsername(), request.getPermission());
+        
+        // Manual validation to see what's actually null
+        if (request.getToken() == null || request.getToken().isBlank()) {
+            logger.error("Token is null or blank: {}", request.getToken());
+            throw new BadRequestException("Token is required");
+        }
+        
+        if (request.getFolderId() == null) {
+            logger.error("FolderId is null: {}", request.getFolderId());
+            throw new BadRequestException("Folder ID is required");
+        }
+        
+        if (request.getTargetUsername() == null || request.getTargetUsername().isBlank()) {
+            logger.error("TargetUsername is null or blank: {}", request.getTargetUsername());
+            throw new BadRequestException("Target username is required");
+        }
+        
         Long userId = sessionService.validateTokenAndGetUserId(request.getToken());
         logger.info("Share folder request from user: {}", userId);
 
@@ -99,6 +123,7 @@ public class FolderController {
         Long userId = sessionService.validateTokenAndGetUserId(token);
         logger.info("Get shared folders request for user: {}", userId);
 
+        @SuppressWarnings("null")
         List<FolderResponse> folders = folderService.getAllAccessibleFolders(userId);
         List<FolderResponse> shared = folders.stream()
                 .filter(f -> f.getIsShared() != null && f.getIsShared())
