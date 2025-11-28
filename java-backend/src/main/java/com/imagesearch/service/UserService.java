@@ -117,6 +117,7 @@ public class UserService {
      *
      * @param userId User ID to delete
      */
+    @SuppressWarnings("null")
     @Transactional
     public void deleteAccount(Long userId) {
         if (userId == null) {

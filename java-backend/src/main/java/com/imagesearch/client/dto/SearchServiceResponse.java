@@ -13,6 +13,7 @@ import java.util.List;
 @AllArgsConstructor
 public class SearchServiceResponse {
     private List<SearchResult> results;
+    private Integer total;
 
     @Data
     @NoArgsConstructor
@@ -20,5 +21,6 @@ public class SearchServiceResponse {
     public static class SearchResult {
         private Long imageId;
         private Double score;
+        private Long folderId;
     }
 }

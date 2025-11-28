@@ -3,7 +3,6 @@ package com.imagesearch.service;
 import com.imagesearch.client.PythonSearchClient;
 import com.imagesearch.client.dto.SearchServiceRequest;
 import com.imagesearch.client.dto.SearchServiceResponse;
-import com.imagesearch.exception.ResourceNotFoundException;
 import com.imagesearch.model.dto.response.SearchResponse;
 import com.imagesearch.model.entity.Folder;
 import com.imagesearch.model.entity.Image;
@@ -75,7 +74,8 @@ public class SearchService {
             throw new IllegalArgumentException("userId cannot be null");
         }
         if (query == null || query.trim().isEmpty()) {
-            throw new IllegalArgumentException("query cannot be null or empty");
+            logger.info("Empty search query - returning empty results");
+            return new SearchResponse(new ArrayList<>());
         }
 
         logger.info("Searching images: user={}, query='{}', folders={}, topK={}",

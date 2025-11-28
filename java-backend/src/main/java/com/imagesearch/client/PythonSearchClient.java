@@ -8,7 +8,6 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
 
 import java.time.Duration;
 
@@ -32,6 +31,7 @@ public class PythonSearchClient {
     private final WebClient webClient;
     private final int timeoutSeconds;
 
+    @SuppressWarnings("null")
     public PythonSearchClient(
             WebClient.Builder webClientBuilder,
             @Value("${search-service.base-url}") String baseUrl,
@@ -54,7 +54,7 @@ public class PythonSearchClient {
 
         try {
             SearchServiceResponse response = webClient.post()
-                    .uri("/search")
+                    .uri("/api/search")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(SearchServiceResponse.class)
@@ -84,7 +84,7 @@ public class PythonSearchClient {
 
         try {
             webClient.post()
-                    .uri("/embed-images")
+                    .uri("/api/embed-images")
                     .bodyValue(request)
                     .retrieve()
                     .bodyToMono(Void.class)
@@ -113,7 +113,7 @@ public class PythonSearchClient {
 
         try {
             webClient.post()
-                    .uri("/create-index")
+                    .uri("/api/create-index")
                     .bodyValue(new CreateIndexRequest(userId, folderId))
                     .retrieve()
                     .bodyToMono(Void.class)
@@ -139,7 +139,7 @@ public class PythonSearchClient {
 
         try {
             webClient.delete()
-                    .uri("/delete-index/{userId}/{folderId}", userId, folderId)
+                    .uri("/api/delete-index/{userId}/{folderId}", userId, folderId)
                     .retrieve()
                     .bodyToMono(Void.class)
                     .timeout(Duration.ofSeconds(timeoutSeconds))

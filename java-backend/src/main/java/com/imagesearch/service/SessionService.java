@@ -81,6 +81,7 @@ public class SessionService {
      *
      * @param token The session token to invalidate
      */
+    @SuppressWarnings("null")
     @Transactional
     public void invalidateSession(String token) {
         sessionRepository.deleteById(token);

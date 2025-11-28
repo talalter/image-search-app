@@ -148,6 +148,7 @@ public class ImageService {
      * @param file Image file
      * @return Saved file path
      */
+    @SuppressWarnings("null")
     private String saveImageFile(Long userId, Long folderId, MultipartFile file) throws IOException {
         if (userId == null || folderId == null) {
             throw new IllegalArgumentException("userId and folderId cannot be null");
