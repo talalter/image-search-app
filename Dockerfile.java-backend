@@ -1,0 +1,59 @@
+# Multi-stage Dockerfile for Java Backend with build caching
+
+# Stage 1: Build stage
+FROM eclipse-temurin:17-jdk-jammy AS builder
+
+WORKDIR /app
+
+# Copy Gradle wrapper and dependency files first (for layer caching)
+COPY java-backend/gradle ./gradle
+COPY java-backend/gradlew ./
+COPY java-backend/build.gradle ./
+COPY java-backend/settings.gradle ./
+
+# Download dependencies (cached layer - only rebuilds when dependencies change)
+RUN ./gradlew dependencies --no-daemon
+
+# Copy source code
+COPY java-backend/src ./src
+
+# Build the application
+RUN ./gradlew bootJar --no-daemon && \
+    cp build/libs/*.jar app.jar
+
+# Stage 2: Runtime stage (minimal JRE image)
+FROM eclipse-temurin:17-jre-jammy
+
+WORKDIR /app
+
+# Create non-root user
+RUN groupadd -r appuser && useradd -r -g appuser appuser
+
+# Copy only the built JAR from builder stage
+COPY --from=builder /app/app.jar ./java-backend.jar
+
+# Create necessary directories
+RUN mkdir -p /app/data/uploads /app/logs && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD curl -f http://localhost:8080/actuator/health || exit 1
+
+# JVM optimization flags
+ENV JAVA_OPTS="-Xms128m -Xmx512m \
+    -XX:+UseParallelGC \
+    -XX:ParallelGCThreads=2 \
+    -XX:MaxMetaspaceSize=128m \
+    -Djava.awt.headless=true \
+    -XX:+UseCompressedOops \
+    -Dserver.port=8080"
+
+# Run the application
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/java-backend.jar"]

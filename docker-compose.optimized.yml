@@ -1,0 +1,220 @@
+version: '3.8'
+
+# Optimized Docker Compose configuration
+# - Separated services for better resource management
+# - Dedicated volumes for caching
+# - tmpfs for temporary data
+# - Health checks for all services
+# - Custom network with service discovery
+
+networks:
+  backend:
+    driver: bridge
+    name: imagesearch-network
+
+volumes:
+  # Persistent data volumes
+  app-data:
+    driver: local
+  postgres-data:
+    driver: local
+  elasticsearch-data:
+    driver: local
+
+  # Build cache volumes (speeds up rebuilds)
+  gradle-cache:
+    driver: local
+  npm-cache:
+    driver: local
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:16-alpine
+    container_name: imagesearch-postgres
+    environment:
+      POSTGRES_DB: imagesearch
+      POSTGRES_USER: imageuser
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
+      # Performance tuning
+      POSTGRES_SHARED_BUFFERS: 256MB
+      POSTGRES_EFFECTIVE_CACHE_SIZE: 1GB
+      POSTGRES_MAINTENANCE_WORK_MEM: 64MB
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./scripts/init-postgres.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    ports:
+      - "5432:5432"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imageuser -d imagesearch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+
+  # Elasticsearch
+  elasticsearch:
+    image: elasticsearch:8.11.0
+    container_name: imagesearch-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - bootstrap.memory_lock=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx1g"
+      - cluster.name=imagesearch-cluster
+      - node.name=imagesearch-node
+      - indices.fielddata.cache.size=25%
+      - indices.breaker.total.use_real_memory=false
+    volumes:
+      - elasticsearch-data:/usr/share/elasticsearch/data
+    ports:
+      - "9200:9200"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 1G
+    restart: unless-stopped
+
+  # Java Search Service (ONNX + Elasticsearch)
+  java-search-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.java-search-service
+      cache_from:
+        - imagesearch-java-search:latest
+    image: imagesearch-java-search:latest
+    container_name: imagesearch-java-search
+    environment:
+      - CLIP_TEXT_MODEL_PATH=/app/models/clip-vit-base-patch32-text.onnx
+      - CLIP_IMAGE_MODEL_PATH=/app/models/clip-vit-base-patch32-visual.onnx
+      - CLIP_VOCAB_PATH=/app/models/vocab.txt
+      - CLIP_MERGES_PATH=/app/models/merges.txt
+      - ELASTICSEARCH_HOST=elasticsearch
+      - ELASTICSEARCH_PORT=9200
+      - JAVA_OPTS=-Xms256m -Xmx1024m -XX:+UseParallelGC -XX:ParallelGCThreads=2 -XX:MaxMetaspaceSize=256m -Djava.awt.headless=true -XX:+UseCompressedOops -XX:NewRatio=3
+    volumes:
+      - app-data:/app/data
+      - gradle-cache:/root/.gradle
+    tmpfs:
+      - /tmp:size=256M
+      - /app/logs:size=128M
+    ports:
+      - "5001:5001"
+    networks:
+      - backend
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5001/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    deploy:
+      resources:
+        limits:
+          memory: 1.5G
+        reservations:
+          memory: 512M
+    restart: unless-stopped
+
+  # Java Backend (Spring Boot)
+  java-backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.java-backend
+      cache_from:
+        - imagesearch-java-backend:latest
+    image: imagesearch-java-backend:latest
+    container_name: imagesearch-java-backend
+    environment:
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/imagesearch
+      - DB_USERNAME=imageuser
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
+      - SEARCH_SERVICE_URL=http://java-search-service:5001
+      - STORAGE_BACKEND=local
+      - IMAGES_ROOT=/app/data/uploads
+      - JAVA_OPTS=-Xms128m -Xmx512m -XX:+UseParallelGC -XX:ParallelGCThreads=2 -XX:MaxMetaspaceSize=128m -Djava.awt.headless=true -XX:+UseCompressedOops
+    volumes:
+      - app-data:/app/data
+      - gradle-cache:/root/.gradle
+    tmpfs:
+      - /tmp:size=256M
+      - /app/logs:size=128M
+    ports:
+      - "8080:8080"
+    networks:
+      - backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      java-search-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    deploy:
+      resources:
+        limits:
+          memory: 768M
+        reservations:
+          memory: 256M
+    restart: unless-stopped
+
+  # React Frontend (Nginx)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+      cache_from:
+        - imagesearch-frontend:latest
+    image: imagesearch-frontend:latest
+    container_name: imagesearch-frontend
+    volumes:
+      - ./frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    tmpfs:
+      - /var/cache/nginx:size=64M
+      - /var/run:size=16M
+    ports:
+      - "3000:80"
+    networks:
+      - backend
+    depends_on:
+      java-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+        reservations:
+          memory: 64M
+    restart: unless-stopped
