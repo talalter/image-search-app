@@ -31,7 +31,11 @@ server:
   servlet:
     context-path: /
 
-# Python Search Service Configuration
+# Search Service Configuration (Plugin Architecture)
+# Can point to either:
+# - Python Search Service: http://localhost:5000 (default)
+# - Java Search Service: http://localhost:5001
+# Set via environment variable: SEARCH_SERVICE_URL
 search-service:
   base-url: ${SEARCH_SERVICE_URL:http://localhost:5000}
   timeout-seconds: 30

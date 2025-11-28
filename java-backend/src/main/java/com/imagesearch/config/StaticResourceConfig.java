@@ -1,6 +1,7 @@
 package com.imagesearch.config;
 
 import org.springframework.context.annotation.Configuration;
+import org.springframework.lang.NonNull;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
@@ -17,7 +18,7 @@ import java.nio.file.Paths;
 public class StaticResourceConfig implements WebMvcConfigurer {
 
     @Override
-    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+    public void addResourceHandlers(@NonNull ResourceHandlerRegistry registry) {
         // Get absolute path to data/uploads/images directory in project root
         Path currentDir = Paths.get("").toAbsolutePath();
         Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
