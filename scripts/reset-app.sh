@@ -20,6 +20,7 @@ echo "⚠️  WARNING: This will delete ALL data:"
 echo "  • All database records (users, images, folders, etc.)"
 echo "  • All uploaded image files"
 echo "  • All FAISS vector indices"
+echo "  • All Lucene vector indices"
 echo ""
 echo "This action cannot be undone!"
 echo ""
@@ -44,7 +45,7 @@ DB_USER="imageuser"
 DB_PASS="imagepass123"
 
 # 1. Clear database
-echo "📊 Step 1/3: Clearing database..."
+echo "📊 Step 1/5: Clearing database..."
 PGPASSWORD=$DB_PASS psql -h $DB_HOST -U $DB_USER -d $DB_NAME << 'EOF' 2>/dev/null
 -- Truncate all tables
 TRUNCATE folder_shares, images, sessions, folders, users CASCADE;
@@ -65,7 +66,7 @@ fi
 
 # 2. Delete uploaded images
 echo ""
-echo "🖼️  Step 2/3: Deleting uploaded images..."
+echo "🖼️  Step 2/5: Deleting uploaded images..."
 
 # New unified data directory
 if [ -d "data/uploads" ]; then
@@ -83,7 +84,7 @@ fi
 
 # 3. Delete FAISS indices
 echo ""
-echo "🔍 Step 3/3: Deleting FAISS indices..."
+echo "🔍 Step 3/5: Deleting FAISS indices..."
 
 # New unified data directory
 if [ -d "data/indexes" ]; then
@@ -94,15 +95,80 @@ else
 fi
 
 # Legacy directories (for backward compatibility)
-if [ -d "search-service/faiss_indexes" ]; then
-    rm -rf search-service/faiss_indexes/*
-    echo "✅ Deleted indices from legacy search-service/faiss_indexes/"
+if [ -d "python-search-service/faiss_indexes" ]; then
+    rm -rf python-search-service/faiss_indexes/*
+    echo "✅ Deleted indices from legacy python-search-service/faiss_indexes/"
 fi
 
 if [ -d "python-backend/faisses_indexes" ]; then
     rm -rf python-backend/faisses_indexes/*
     echo "✅ Deleted indices from legacy python-backend/faisses_indexes/"
 fi
+
+if [ -d "backend/faisses_indexes" ]; then
+    rm -rf backend/faisses_indexes/*
+    echo "✅ Deleted indices from legacy backend/faisses_indexes/"
+fi
+
+# 4. Delete Lucene indices
+echo ""
+echo "🔍 Step 4/6: Deleting Lucene indices..."
+
+if [ -d "data/lucene-indexes" ]; then
+    rm -rf data/lucene-indexes/*
+    echo "✅ Deleted all Lucene indices from data/lucene-indexes/"
+else
+    echo "ℹ️  Directory data/lucene-indexes/ does not exist (skipping)"
+fi
+
+# 5. Delete Elasticsearch indices
+echo ""
+echo "🔍 Step 5/6: Deleting Elasticsearch indices..."
+
+# Check if Elasticsearch is running and accessible
+if curl -s "localhost:9200" > /dev/null 2>&1; then
+    # Get all indices that match the pattern images-* into an array
+    INDICES=($(curl -s "localhost:9200/_cat/indices?h=index" 2>/dev/null | grep "^images-"))
+    
+    if [ ${#INDICES[@]} -gt 0 ]; then
+        echo "Found Elasticsearch indices: ${INDICES[@]}"
+        # Delete each index individually
+        DELETED_COUNT=0
+        FAILED_COUNT=0
+        
+        for index in "${INDICES[@]}"; do
+            if [ -n "$index" ]; then
+                if curl -s -X DELETE "localhost:9200/$index" > /dev/null 2>&1; then
+                    echo "  ✅ Deleted index: $index"
+                    ((DELETED_COUNT++))
+                else
+                    echo "  ❌ Failed to delete index: $index"
+                    ((FAILED_COUNT++))
+                fi
+            fi
+        done
+        
+        if [ $FAILED_COUNT -eq 0 ]; then
+            echo "✅ Successfully deleted $DELETED_COUNT Elasticsearch indices"
+        else
+            echo "⚠️  Warning: Deleted $DELETED_COUNT indices, failed to delete $FAILED_COUNT indices"
+        fi
+    else
+        echo "ℹ️  No Elasticsearch indices found matching 'images-*'"
+    fi
+else
+    echo "ℹ️  Elasticsearch not accessible at localhost:9200 (skipping)"
+fi
+
+# 6. Delete temporary/cache files
+echo ""
+echo "🗑️  Step 6/6: Cleaning temporary files..."
+
+# Clean Python cache
+find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null
+find . -type f -name "*.pyc" -delete 2>/dev/null
+
+echo "✅ Deleted Python cache files"
 
 echo ""
 echo "================================================"
@@ -112,10 +178,14 @@ echo ""
 echo "Your app is now in a clean state. You can test from scratch."
 echo ""
 echo "To start fresh:"
-echo "  1. Start the backend: ./scripts/run-python-backend.sh"
-echo "  2. Start the search service: ./scripts/run-search-service.sh"
-echo "  3. Start the frontend: ./scripts/run-frontend-python.sh"
+echo ""
+echo "Python Stack:"
+echo "  ./scripts/run-all-python-stack.sh"
+echo ""
+echo "Java Stack:"
+echo "  ./scripts/run-all-java-stack.sh"
 echo ""
 echo "Or use docker-compose:"
 echo "  docker-compose -f docker-compose.python.yml up"
+echo "  docker-compose -f docker-compose.java.yml up"
 echo ""

@@ -6,8 +6,8 @@ echo "============================================"
 echo "Starting Java Backend"
 echo "============================================"
 echo ""
-echo "⚠️  Make sure search-service is running!"
-echo "Run: ./scripts/run-search-service.sh"
+echo "⚠️  Make sure python-search-service is running!"
+echo "Run: ./scripts/run-python-search-service.sh"
 echo ""
 
 # Get the project root directory (parent of scripts/)
