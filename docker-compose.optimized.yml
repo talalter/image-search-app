@@ -114,9 +114,6 @@ services:
     volumes:
       - app-data:/app/data
       - gradle-cache:/root/.gradle
-    tmpfs:
-      - /tmp:size=256M
-      - /app/logs:size=128M
     ports:
       - "5001:5001"
     networks:
