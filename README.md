@@ -30,7 +30,7 @@ React Frontend (Port 3000)
         ↓
 Backend ← Choose ONE:
    ├─→ Java Spring Boot (Port 8080)
-   └─→ Python FastAPI (Port 9999)
+   └─→ Python FastAPI (Port 8000)
         │
         ├─→ PostgreSQL Database (Port 5432)
         └─→ Python Search Service (Port 5000)
@@ -51,7 +51,7 @@ Both backends provide **identical REST API functionality** - choose based on you
 - Transaction management and global exception handling
 - Comprehensive test suite (JUnit + Mockito)
 
-**Python FastAPI Backend (Port 9999)**
+**Python FastAPI Backend (Port 8000)**
 - Modern async FastAPI framework
 - Direct psycopg2 for PostgreSQL operations
 - HTTP client for search service communication
@@ -98,7 +98,7 @@ GRANT ALL PRIVILEGES ON DATABASE imagesearch TO imageuser;
 ### 2. Start Python Search Service
 
 ```bash
-cd search-service
+cd python-search-service
 python3 -m venv venv
 source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r requirements.txt
@@ -125,10 +125,10 @@ source venv/bin/activate  # Windows: venv\Scripts\activate
 pip install -r ../requirements.txt
 export DB_USERNAME=imageuser
 export DB_PASSWORD=yourpassword
-uvicorn api:app --host 0.0.0.0 --port 9999  # Runs on http://localhost:9999
+uvicorn api:app --host 0.0.0.0 --port 8000  # Runs on http://localhost:8000
 ```
 
-**Note:** Configure frontend to point to the correct backend port (8080 for Java, 9999 for Python).
+**Note:** Configure frontend to point to the correct backend port (8080 for Java, 8000 for Python).
 
 ### 4. Start React Frontend
 
@@ -138,7 +138,7 @@ npm install
 # For Java backend:
 REACT_APP_API_URL=http://localhost:8080 npm start
 # For Python backend:
-REACT_APP_API_URL=http://localhost:9999 npm start
+REACT_APP_API_URL=http://localhost:8000 npm start
 # Opens http://localhost:3000
 ```
 
@@ -190,7 +190,7 @@ image-search-app/
 │   │   └── client/           # Microservice clients
 │   └── src/test/             # JUnit tests
 │
-├── search-service/            # Python FastAPI service
+├── python-search-service/            # Python FastAPI service
 │   ├── app.py                # Main application
 │   ├── embedding_service.py  # CLIP model
 │   └── search_handler.py     # FAISS operations
@@ -221,15 +221,33 @@ image-search-app/
 
 ## Testing
 
+### Unit Tests
+
 ```bash
 # Java backend tests
 cd java-backend
 ./gradlew test
 
-# Python service tests
+# Python backend tests
 cd python-backend
 pytest tests/
 ```
+
+### API Testing
+
+**Automated Testing (Recommended):**
+```bash
+# Test Python backend
+./scripts/test-api.sh python
+
+# Test Java backend
+./scripts/test-api.sh java
+```
+
+**Manual Testing:**
+- Import `Image_Search_API.postman_collection.json` into Postman
+- See [API_TESTING.md](API_TESTING.md) for complete guide
+- See [QUICK_TEST_REFERENCE.md](QUICK_TEST_REFERENCE.md) for quick commands
 
 ## Docker Deployment
 
