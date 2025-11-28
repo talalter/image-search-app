@@ -1,0 +1,356 @@
+package com.imagesearch.search.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.apache.lucene.analysis.standard.StandardAnalyzer;
+import org.apache.lucene.document.Document;
+import org.apache.lucene.document.Field;
+import org.apache.lucene.document.StoredField;
+import org.apache.lucene.document.StringField;
+import org.apache.lucene.index.*;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.store.Directory;
+import org.apache.lucene.store.FSDirectory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.ByteBuffer;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
+
+/**
+ * Lucene-based vector search service
+ *
+ * Manages per-folder Lucene indexes for storing and searching image embeddings
+ * using cosine similarity (dot product for normalized vectors).
+ *
+ * Features:
+ * - Per-user, per-folder index organization
+ * - Binary vector storage (512 floats = 2048 bytes)
+ * - Brute-force cosine similarity search
+ * - Thread-safe index management
+ */
+@Service
+@Slf4j
+public class LuceneSearchService {
+
+    @Value("${lucene.index.base-path:./data/lucene-indexes}")
+    private String indexBasePath;
+
+    private final Map<String, IndexWriter> writers = new ConcurrentHashMap<>();
+    private final Map<String, DirectoryReader> readers = new ConcurrentHashMap<>();
+
+    /**
+     * Create a new Lucene index for a folder
+     *
+     * @param userId User ID
+     * @param folderId Folder ID
+     * @throws IOException if index creation fails
+     */
+    public void createIndex(Long userId, Long folderId) throws IOException {
+        String indexKey = getIndexKey(userId, folderId);
+
+        // Check if index already exists
+        if (writers.containsKey(indexKey)) {
+            log.info("Index {} already exists", indexKey);
+            return;
+        }
+
+        Path indexPath = Paths.get(indexBasePath, userId.toString(), folderId.toString());
+        Files.createDirectories(indexPath);
+
+        Directory directory = FSDirectory.open(indexPath);
+        IndexWriterConfig config = new IndexWriterConfig(new StandardAnalyzer());
+        config.setOpenMode(IndexWriterConfig.OpenMode.CREATE_OR_APPEND);
+
+        IndexWriter writer = new IndexWriter(directory, config);
+        writers.put(indexKey, writer);
+
+        log.info("Created Lucene index for user {} folder {} at {}", userId, folderId, indexPath);
+    }
+
+    /**
+     * Add image embeddings to the index
+     *
+     * @param userId User ID
+     * @param folderId Folder ID
+     * @param imageIds List of image IDs
+     * @param embeddings List of 512-dimensional embedding vectors
+     * @throws IOException if adding vectors fails
+     */
+    public void addVectors(Long userId, Long folderId,
+                          List<Long> imageIds, List<float[]> embeddings) throws IOException {
+
+        if (imageIds.size() != embeddings.size()) {
+            throw new IllegalArgumentException("Image IDs and embeddings must have same length");
+        }
+
+        String indexKey = getIndexKey(userId, folderId);
+        IndexWriter writer = writers.get(indexKey);
+
+        if (writer == null) {
+            createIndex(userId, folderId);
+            writer = writers.get(indexKey);
+        }
+
+        for (int i = 0; i < imageIds.size(); i++) {
+            Document doc = new Document();
+
+            // Store image ID as searchable field
+            doc.add(new StringField("image_id", imageIds.get(i).toString(), Field.Store.YES));
+            doc.add(new StoredField("image_id_long", imageIds.get(i)));
+
+            // Store folder ID
+            doc.add(new StoredField("folder_id", folderId));
+
+            // CRITICAL: Normalize embedding before storage for cosine similarity
+            // This ensures L2 norm = 1, making dot product equivalent to cosine similarity
+            // Matches Python FAISS behavior which normalizes before IndexFlatIP
+            float[] normalizedEmbedding = normalizeVector(embeddings.get(i));
+
+            // Store embedding as binary data (512 floats = 2048 bytes)
+            byte[] embeddingBytes = floatArrayToBytes(normalizedEmbedding);
+            doc.add(new StoredField("embedding", embeddingBytes));
+
+            writer.addDocument(doc);
+        }
+
+        writer.commit();
+        log.info("Added {} vectors to index {} (user={}, folder={})",
+                imageIds.size(), indexKey, userId, folderId);
+
+        // Refresh reader if it exists
+        DirectoryReader reader = readers.get(indexKey);
+        if (reader != null) {
+            DirectoryReader newReader = DirectoryReader.openIfChanged(reader);
+            if (newReader != null) {
+                readers.put(indexKey, newReader);
+                reader.close();
+            }
+        }
+    }
+
+    /**
+     * Search for similar vectors using cosine similarity
+     *
+     * @param userId User ID
+     * @param queryEmbedding Query embedding (512-dimensional)
+     * @param folderIds List of folder IDs to search
+     * @param topK Number of top results to return
+     * @return List of scored images sorted by similarity (descending)
+     * @throws IOException if search fails
+     */
+    public List<ScoredImage> search(Long userId, float[] queryEmbedding,
+                                   List<Long> folderIds, int topK) throws IOException {
+
+        List<ScoredImage> allResults = new ArrayList<>();
+
+        for (Long folderId : folderIds) {
+            String indexKey = getIndexKey(userId, folderId);
+            DirectoryReader reader = getOrOpenReader(userId, folderId);
+
+            if (reader == null) {
+                log.warn("No index found for user {} folder {}", userId, folderId);
+                continue;
+            }
+
+            IndexSearcher searcher = new IndexSearcher(reader);
+
+            // Brute-force search through all documents
+            for (int docId = 0; docId < reader.maxDoc(); docId++) {
+                try {
+                    Document doc = searcher.doc(docId);
+
+                    // Skip if document doesn't have embedding (deleted or corrupted)
+                    if (doc.getBinaryValue("embedding") == null) {
+                        continue;
+                    }
+
+                    byte[] embeddingBytes = doc.getBinaryValue("embedding").bytes;
+                    float[] embedding = bytesToFloatArray(embeddingBytes);
+
+                    // Cosine similarity (dot product for L2-normalized vectors)
+                    float similarity = cosineSimilarity(queryEmbedding, embedding);
+
+                    Long imageId = doc.getField("image_id_long").numericValue().longValue();
+                    Long docFolderId = doc.getField("folder_id").numericValue().longValue();
+
+                    allResults.add(new ScoredImage(imageId, similarity, docFolderId));
+                } catch (Exception e) {
+                    log.debug("Skipping document {}: {}", docId, e.getMessage());
+                    continue;
+                }
+            }
+        }
+
+        // Sort by similarity (descending) and take top-k
+        return allResults.stream()
+                .sorted((a, b) -> Float.compare(b.score, a.score))
+                .limit(topK)
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Delete an index for a folder
+     *
+     * @param userId User ID
+     * @param folderId Folder ID
+     * @throws IOException if deletion fails
+     */
+    public void deleteIndex(Long userId, Long folderId) throws IOException {
+        String indexKey = getIndexKey(userId, folderId);
+
+        // Close and remove writer
+        IndexWriter writer = writers.remove(indexKey);
+        if (writer != null) {
+            writer.close();
+        }
+
+        // Close and remove reader
+        DirectoryReader reader = readers.remove(indexKey);
+        if (reader != null) {
+            reader.close();
+        }
+
+        // Delete index directory
+        Path indexPath = Paths.get(indexBasePath, userId.toString(), folderId.toString());
+        if (Files.exists(indexPath)) {
+            Files.walk(indexPath)
+                 .sorted(Comparator.reverseOrder())
+                 .map(Path::toFile)
+                 .forEach(File::delete);
+            log.info("Deleted Lucene index for user {} folder {}", userId, folderId);
+        }
+    }
+
+    /**
+     * Check if an index exists for a folder
+     */
+    public boolean indexExists(Long userId, Long folderId) {
+        Path indexPath = Paths.get(indexBasePath, userId.toString(), folderId.toString());
+        return Files.exists(indexPath) && Files.isDirectory(indexPath);
+    }
+
+    /**
+     * Get index size (number of documents)
+     */
+    public int getIndexSize(Long userId, Long folderId) throws IOException {
+        DirectoryReader reader = getOrOpenReader(userId, folderId);
+        return reader != null ? reader.numDocs() : 0;
+    }
+
+    // ========== Helper Methods ==========
+
+    private String getIndexKey(Long userId, Long folderId) {
+        return userId + "_" + folderId;
+    }
+
+    private DirectoryReader getOrOpenReader(Long userId, Long folderId) throws IOException {
+        String indexKey = getIndexKey(userId, folderId);
+        DirectoryReader reader = readers.get(indexKey);
+
+        if (reader == null) {
+            Path indexPath = Paths.get(indexBasePath, userId.toString(), folderId.toString());
+            if (!Files.exists(indexPath)) {
+                return null;
+            }
+
+            Directory directory = FSDirectory.open(indexPath);
+            if (DirectoryReader.indexExists(directory)) {
+                reader = DirectoryReader.open(directory);
+                readers.put(indexKey, reader);
+            }
+        }
+
+        return reader;
+    }
+
+    private byte[] floatArrayToBytes(float[] floats) {
+        ByteBuffer buffer = ByteBuffer.allocate(floats.length * Float.BYTES);
+        for (float f : floats) {
+            buffer.putFloat(f);
+        }
+        return buffer.array();
+    }
+
+    private float[] bytesToFloatArray(byte[] bytes) {
+        ByteBuffer buffer = ByteBuffer.wrap(bytes);
+        float[] floats = new float[bytes.length / Float.BYTES];
+        for (int i = 0; i < floats.length; i++) {
+            floats[i] = buffer.getFloat();
+        }
+        return floats;
+    }
+
+    /**
+     * Normalize vector to L2 norm = 1
+     *
+     * Required for cosine similarity via dot product.
+     * After normalization: cosine_similarity(a, b) = dot_product(a, b)
+     *
+     * This matches the Python FAISS implementation which normalizes vectors
+     * before adding to IndexFlatIP (inner product index).
+     *
+     * @param vector Input vector
+     * @return L2-normalized vector
+     */
+    private float[] normalizeVector(float[] vector) {
+        // Calculate L2 norm (Euclidean magnitude)
+        float norm = 0.0f;
+        for (float v : vector) {
+            norm += v * v;
+        }
+        norm = (float) Math.sqrt(norm);
+
+        // Handle zero or near-zero magnitude
+        if (norm < 1e-6f) {
+            log.warn("Vector norm too small ({}), returning as-is", norm);
+            return vector;
+        }
+
+        // Normalize: divide each element by magnitude
+        float[] normalized = new float[vector.length];
+        for (int i = 0; i < vector.length; i++) {
+            normalized[i] = vector[i] / norm;
+        }
+
+        return normalized;
+    }
+
+    /**
+     * Calculate cosine similarity between two vectors
+     * (Assumes both vectors are L2-normalized, so this is just dot product)
+     */
+    private float cosineSimilarity(float[] a, float[] b) {
+        if (a.length != b.length) {
+            throw new IllegalArgumentException("Vectors must have same dimension");
+        }
+
+        float dotProduct = 0.0f;
+        for (int i = 0; i < a.length; i++) {
+            dotProduct += a[i] * b[i];
+        }
+
+        return dotProduct;
+    }
+
+    /**
+     * Scored image result
+     */
+    public static class ScoredImage {
+        public final Long imageId;
+        public final Float score;
+        public final Long folderId;
+
+        public ScoredImage(Long imageId, Float score, Long folderId) {
+            this.imageId = imageId;
+            this.score = score;
+            this.folderId = folderId;
+        }
+    }
+}

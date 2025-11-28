@@ -1,0 +1,80 @@
+server:
+  port: 5001
+
+spring:
+  application:
+    name: java-search-service
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=10000,expireAfterAccess=24h
+
+# Spring Boot Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# CLIP ONNX Model Configuration
+clip:
+  model:
+    # Paths to ONNX models (relative to project root or absolute)
+    text-model-path: ${CLIP_TEXT_MODEL_PATH:models/clip-vit-base-patch32-text.onnx}
+    image-model-path: ${CLIP_IMAGE_MODEL_PATH:models/clip-vit-base-patch32-visual.onnx}
+    vocab-path: ${CLIP_VOCAB_PATH:models/vocab.txt}
+    merges-path: ${CLIP_MERGES_PATH:models/merges.txt}
+
+    # Model configuration
+    embedding-dimension: 512
+    max-text-length: 77
+    image-size: 224
+
+    # Performance settings
+    inference-threads: 0  # 0 = auto-detect
+    use-gpu: false  # Set to true if ONNX Runtime GPU build is available
+
+    # Auto-download from Hugging Face if models not found
+    # Set to false - use ./scripts/download-clip-models.sh for one-time setup instead
+    auto-download: false
+    hugging-face-model-id: openai/clip-vit-base-patch32
+
+# Elasticsearch Configuration
+elasticsearch:
+  host: ${ELASTICSEARCH_HOST:localhost}
+  port: ${ELASTICSEARCH_PORT:9200}
+  scheme: ${ELASTICSEARCH_SCHEME:http}  # Use 'https' for secure connections
+  embedding-dimension: 512  # CLIP embedding dimension
+
+# Lucene Index Configuration (DEPRECATED - replaced by Elasticsearch)
+# Kept for reference only, not used in current implementation
+lucene:
+  index:
+    base-path: ${LUCENE_INDEX_PATH:./data/lucene-indexes}
+
+# Python search service (legacy - for fallback only)
+python:
+  search:
+    service:
+      url: ${PYTHON_SEARCH_SERVICE_URL:http://localhost:5000}
+      enabled: false  # Disabled - using ONNX + Elasticsearch instead
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.imagesearch.search: DEBUG
+    org.apache.lucene: INFO
+    ai.onnxruntime: INFO
+    org.springframework.cache: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
