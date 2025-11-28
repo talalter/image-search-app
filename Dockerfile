@@ -6,7 +6,7 @@
 # - React Frontend (served by Nginx)
 # - All required dependencies and configuration
 
-FROM ubuntu:22.04
+FROM ubuntu:24.04
 
 # Set environment variables
 ENV DEBIAN_FRONTEND=noninteractive
@@ -18,9 +18,9 @@ RUN apt-get update && apt-get install -y \
     # Java 17
     openjdk-17-jdk \
     # PostgreSQL
-    postgresql-15 \
-    postgresql-client-15 \
-    postgresql-contrib-15 \
+    postgresql-16 \
+    postgresql-client-16 \
+    postgresql-contrib-16 \
     # Node.js and npm
     curl \
     # Nginx (for serving React)
@@ -67,7 +67,7 @@ RUN mkdir -p \
     /app/data/lucene-indexes \
     /app/models \
     /app/logs \
-    /var/lib/postgresql/15/main \
+    /var/lib/postgresql/16/main \
     /var/log/postgresql \
     /var/log/elasticsearch \
     /var/lib/elasticsearch \
@@ -121,8 +121,8 @@ RUN mkdir -p /etc/elasticsearch/jvm.options.d && \
     echo "-Xmx1g" >> /etc/elasticsearch/jvm.options.d/heap.options
 
 # Configure PostgreSQL  
-RUN echo "listen_addresses = '*'" >> /etc/postgresql/15/main/postgresql.conf \
-    && echo "port = 5432" >> /etc/postgresql/15/main/postgresql.conf
+RUN echo "listen_addresses = '*'" >> /etc/postgresql/16/main/postgresql.conf \
+    && echo "port = 5432" >> /etc/postgresql/16/main/postgresql.conf
 
 # Create supervisor configuration files
 RUN mkdir -p /var/log/supervisor /etc/supervisor/conf.d
@@ -133,7 +133,7 @@ RUN echo '[supervisord]' > /etc/supervisor/conf.d/supervisord.conf && \
     echo 'user=root' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo '' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo '[program:postgresql]' >> /etc/supervisor/conf.d/supervisord.conf && \
-    echo 'command=/usr/lib/postgresql/15/bin/postgres -D /var/lib/postgresql/15/main -c config_file=/etc/postgresql/15/main/postgresql.conf' >> /etc/supervisor/conf.d/supervisord.conf && \
+    echo 'command=/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/main -c config_file=/etc/postgresql/16/main/postgresql.conf' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'user=postgres' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'autostart=true' >> /etc/supervisor/conf.d/supervisord.conf && \
     echo 'autorestart=true' >> /etc/supervisor/conf.d/supervisord.conf && \
@@ -181,12 +181,12 @@ RUN echo '#!/bin/bash' > /app/startup.sh && \
     echo 'set -e' >> /app/startup.sh && \
     echo '' >> /app/startup.sh && \
     echo '# Initialize PostgreSQL data directory if empty' >> /app/startup.sh && \
-    echo 'if [ ! -s "/var/lib/postgresql/15/main/PG_VERSION" ]; then' >> /app/startup.sh && \
+    echo 'if [ ! -s "/var/lib/postgresql/16/main/PG_VERSION" ]; then' >> /app/startup.sh && \
     echo '    echo "Initializing PostgreSQL database..."' >> /app/startup.sh && \
-    echo '    su postgres -c "/usr/lib/postgresql/15/bin/initdb -D /var/lib/postgresql/15/main"' >> /app/startup.sh && \
+    echo '    su postgres -c "/usr/lib/postgresql/16/bin/initdb -D /var/lib/postgresql/16/main"' >> /app/startup.sh && \
     echo '    ' >> /app/startup.sh && \
     echo '    # Start PostgreSQL temporarily to create database' >> /app/startup.sh && \
-    echo '    su postgres -c "/usr/lib/postgresql/15/bin/postgres -D /var/lib/postgresql/15/main" &' >> /app/startup.sh && \
+    echo '    su postgres -c "/usr/lib/postgresql/16/bin/postgres -D /var/lib/postgresql/16/main" &' >> /app/startup.sh && \
     echo '    PG_PID=$!' >> /app/startup.sh && \
     echo '    sleep 10' >> /app/startup.sh && \
     echo '    ' >> /app/startup.sh && \
