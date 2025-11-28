@@ -1,49 +1,73 @@
-# Don't copy these into Docker build context
+# Don't copy these into Docker unified Java stack build context
 
-# Python cache
+# Python backends (not needed for Java stack)
+python-backend/
+python-search-service/
+
+# Python cache and virtual environments
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 .Python
 *.so
-
-# Virtual environment
 talenv/
 venv/
 env/
 ENV/
 
 # Runtime data (will be mounted as volumes instead)
+data/
 backend/images/
 backend/faisses_indexes/
 backend/database.sqlite
 backend/*.db
+**/uploads/
+**/indexes/
 
-# Git
+# Build artifacts
+**/build/
+**/target/
+**/node_modules/
+**/.gradle/
+**/bin/
+frontend/build/
+
+# Git and version control
 .git/
 .gitignore
 
-# IDE
+# IDE and editor files
 .vscode/
 .idea/
 *.swp
 *.swo
+**/*.iml
 
-# Frontend build artifacts
-frontend/node_modules/
-frontend/build/
+# Environment files
+**/.env
+**/.env.local
 frontend/.env.local
 
-# Docker
-.dockerignore
-Dockerfile
-docker-compose.yml
+# Documentation (keep minimal for unified container)
+API_TESTING.md
+CLAUDE.md
+ELASTICSEARCH_MIGRATION.md
+JAVA_*.md
+QUICK_START_*.md
+SETUP_*.md
+VECTOR_SEARCH_*.md
+docs/
 
-# Documentation
-*.md
-LICENSE
-
-# OS
+# OS files
 .DS_Store
 Thumbs.db
+
+# Test files
+**/tests/
+**/*test*
+**/coverage/
+
+# Logs
+**/*.log
+**/logs/

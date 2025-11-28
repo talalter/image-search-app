@@ -1,117 +1,48 @@
-# Standalone Docker Compose - All services in one file
-# This is a complete setup with Python backend, frontend, database, and search service
-# Run with: docker-compose up -d
-
 version: '3.8'
 
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: imagesearch-postgres
-    environment:
-      POSTGRES_DB: imagesearch
-      POSTGRES_USER: imageuser
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-changeme123}
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - imagesearch-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U imageuser -d imagesearch"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Python Search Service (CLIP + FAISS)
-  search-service:
-    build:
-      context: ./search-service
-      dockerfile: Dockerfile
-    container_name: imagesearch-search-service
-    environment:
-      - PYTHONUNBUFFERED=1
-    volumes:
-      - app-data:/app/data
-    ports:
-      - "5000:5000"
-    networks:
-      - imagesearch-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-
-  # Python Backend (FastAPI)
-  backend:
+  imagesearch-java-stack:
     build:
       context: .
-      dockerfile: python-backend/Dockerfile
-    container_name: imagesearch-backend
+      dockerfile: Dockerfile
+    container_name: imagesearch-java-unified
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=imagesearch
-      - DB_USERNAME=imageuser
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-changeme123}
-      - PYTHONUNBUFFERED=1
-      - STORAGE_BACKEND=local
-      - SEARCH_SERVICE_URL=http://search-service:5000
+      - POSTGRES_PASSWORD=changeme123
+      # Memory optimized settings (matching run-all-java-stack-optimized.sh)
+      - ES_JAVA_OPTS=-Xms512m -Xmx1g
+    deploy:
+      resources:
+        limits:
+          memory: 3g  # Total container limit
+        reservations:
+          memory: 1.5g
     volumes:
+      # Persist data outside container
       - app-data:/app/data
+      - postgres-data:/var/lib/postgresql/15/main
+      - elasticsearch-data:/var/lib/elasticsearch
     ports:
-      - "8000:8000"
-    networks:
-      imagesearch-network:
-        aliases:
-          - backend
-    depends_on:
-      postgres:
-        condition: service_healthy
-      search-service:
-        condition: service_healthy
+      - "3000:3000"   # React Frontend
+      - "8080:8080"   # Java Backend API
+      - "5001:5001"   # Java Search Service
+      - "5432:5432"   # PostgreSQL (optional, for external access)
+      - "9200:9200"   # Elasticsearch (optional, for external access)
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/"]
+      test: ["CMD", "curl", "-f", "http://localhost:3000/"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
-
-  # React Frontend (Nginx)
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      args:
-        - REACT_APP_API_URL=http://localhost:8000
-    container_name: imagesearch-frontend
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
-    networks:
-      - imagesearch-network
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/"]
-      interval: 30s
-      timeout: 3s
-      retries: 3
-      start_period: 10s
-
-networks:
-  imagesearch-network:
-    driver: bridge
+      start_period: 120s
 
 volumes:
-  postgres-data:
-    driver: local
   app-data:
     driver: local
+  postgres-data:
+    driver: local  
+  elasticsearch-data:
+    driver: local
+
+networks:
+  default:
+    name: imagesearch-network
