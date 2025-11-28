@@ -10,12 +10,11 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Nested;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.test.context.TestPropertySource;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
@@ -32,9 +31,11 @@ import static org.hamcrest.Matchers.*;
  * - Input validation
  * - Error handling
  */
-@SpringBootTest
-@AutoConfigureMockMvc
-@Transactional
+@WebMvcTest(UserController.class)
+@TestPropertySource(properties = {
+    "spring.datasource.url=jdbc:h2:mem:testdb",
+    "spring.jpa.hibernate.ddl-auto=none"
+})
 @DisplayName("User Authentication Tests")
 public class UserControllerTest {
 
@@ -51,6 +52,7 @@ public class UserControllerTest {
     @DisplayName("Registration Tests")
     class RegistrationTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should successfully register a new user")
         void testRegisterSuccess() throws Exception {
@@ -63,13 +65,14 @@ public class UserControllerTest {
             when(userService.register(any(RegisterRequest.class)))
                     .thenReturn(response);
 
-            mockMvc.perform(post("/api/register")
+            mockMvc.perform(post("/api/users/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
-                    .andExpect(status().isOk())
+                    .andExpect(status().isCreated())
                     .andExpect(jsonPath("$.username").value("testuser"));
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject registration with existing username")
         void testRegisterDuplicateUsername() throws Exception {
@@ -80,12 +83,13 @@ public class UserControllerTest {
             when(userService.register(any(RegisterRequest.class)))
                     .thenThrow(new RuntimeException("Username already exists"));
 
-            mockMvc.perform(post("/api/register")
+            mockMvc.perform(post("/api/users/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().is4xxClientError());
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject registration with weak password")
         void testRegisterWeakPassword() throws Exception {
@@ -93,12 +97,13 @@ public class UserControllerTest {
             request.setUsername("testuser");
             request.setPassword("123");  // Too short
 
-            mockMvc.perform(post("/api/register")
+            mockMvc.perform(post("/api/users/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().is4xxClientError());
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject registration with empty username")
         void testRegisterEmptyUsername() throws Exception {
@@ -106,16 +111,17 @@ public class UserControllerTest {
             request.setUsername("");
             request.setPassword("SecurePass123!");
 
-            mockMvc.perform(post("/api/register")
+            mockMvc.perform(post("/api/users/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().is4xxClientError());
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject registration with missing fields")
         void testRegisterMissingFields() throws Exception {
-            mockMvc.perform(post("/api/register")
+            mockMvc.perform(post("/api/users/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().is4xxClientError());
@@ -126,6 +132,7 @@ public class UserControllerTest {
     @DisplayName("Login Tests")
     class LoginTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should successfully login with valid credentials")
         void testLoginSuccess() throws Exception {
@@ -138,7 +145,7 @@ public class UserControllerTest {
             when(userService.login(any(LoginRequest.class)))
                     .thenReturn(response);
 
-            mockMvc.perform(post("/api/login")
+            mockMvc.perform(post("/api/users/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isOk())
@@ -146,6 +153,7 @@ public class UserControllerTest {
                     .andExpect(jsonPath("$.token").isNotEmpty());
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject login with wrong password")
         void testLoginWrongPassword() throws Exception {
@@ -156,12 +164,13 @@ public class UserControllerTest {
             when(userService.login(any(LoginRequest.class)))
                     .thenThrow(new RuntimeException("Invalid credentials"));
 
-            mockMvc.perform(post("/api/login")
+            mockMvc.perform(post("/api/users/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized());
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject login with non-existent user")
         void testLoginNonexistentUser() throws Exception {
@@ -172,16 +181,17 @@ public class UserControllerTest {
             when(userService.login(any(LoginRequest.class)))
                     .thenThrow(new RuntimeException("User not found"));
 
-            mockMvc.perform(post("/api/login")
+            mockMvc.perform(post("/api/users/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized());
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should reject login with missing credentials")
         void testLoginMissingFields() throws Exception {
-            mockMvc.perform(post("/api/login")
+            mockMvc.perform(post("/api/users/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("{}"))
                     .andExpect(status().is4xxClientError());
@@ -192,6 +202,7 @@ public class UserControllerTest {
     @DisplayName("Security Tests")
     class SecurityTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should handle SQL injection attempts safely")
         void testSqlInjectionPrevention() throws Exception {
@@ -202,7 +213,7 @@ public class UserControllerTest {
             when(userService.login(any(LoginRequest.class)))
                     .thenThrow(new RuntimeException("Invalid credentials"));
 
-            mockMvc.perform(post("/api/login")
+            mockMvc.perform(post("/api/users/login")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().isUnauthorized())
@@ -210,6 +221,7 @@ public class UserControllerTest {
                     .andExpect(content().string(not(containsString("FROM"))));
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should handle XSS attempts safely")
         void testXssProtection() throws Exception {
@@ -217,7 +229,7 @@ public class UserControllerTest {
             request.setUsername("<script>alert('xss')</script>");
             request.setPassword("SecurePass123!");
 
-            mockMvc.perform(post("/api/register")
+            mockMvc.perform(post("/api/users/register")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content(objectMapper.writeValueAsString(request)))
                     .andExpect(status().is4xxClientError());

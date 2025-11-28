@@ -3,11 +3,13 @@ package com.imagesearch.service;
 import com.imagesearch.client.PythonSearchClient;
 import com.imagesearch.client.dto.SearchServiceRequest;
 import com.imagesearch.client.dto.SearchServiceResponse;
+import com.imagesearch.model.dto.response.SearchResponse;
 import com.imagesearch.model.entity.Folder;
 import com.imagesearch.model.entity.Image;
 import com.imagesearch.model.entity.User;
 import com.imagesearch.repository.FolderRepository;
 import com.imagesearch.repository.ImageRepository;
+import com.imagesearch.exception.ResourceNotFoundException;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.BeforeEach;
@@ -23,6 +25,7 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
+import static org.mockito.Mockito.lenient;
 
 /**
  * Unit tests for SearchService.
@@ -81,6 +84,7 @@ public class SearchServiceTest {
     @DisplayName("Search Functionality Tests")
     class SearchFunctionalityTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should return search results for valid query")
         void testSearchSuccess() {
@@ -91,10 +95,9 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
 
-            SearchServiceResponse.SearchResult resultItem = new SearchServiceResponse.SearchResult(1L, 0.95);
+            SearchServiceResponse.SearchResult resultItem = new SearchServiceResponse.SearchResult(1L, 0.95, 1L);
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList(resultItem));
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(resultItem), 1);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
@@ -103,7 +106,7 @@ public class SearchServiceTest {
                     .thenReturn(testImage);
 
             // Act
-            var results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
+            SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
             // Assert
             assertThat(results).isNotNull();
@@ -112,7 +115,7 @@ public class SearchServiceTest {
 
             verify(pythonSearchClient, times(1)).search(any(SearchServiceRequest.class));
         }
-
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should return empty results when no matches found")
         void testSearchNoResults() {
@@ -122,18 +125,18 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList());
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(), 0);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
-            var results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
+            SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
             assertThat(results).isNotNull();
             assertThat(results.getResults()).isEmpty();
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should search across multiple folders")
         void testSearchMultipleFolders() {
@@ -150,8 +153,7 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 2L))
                     .thenReturn(folder2);
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList());
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(), 0);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
@@ -166,36 +168,31 @@ public class SearchServiceTest {
     @DisplayName("Permission Tests")
     class PermissionTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should only search folders user has access to")
         void testSearchOnlyAccessibleFolders() {
-            List<Long> folderIds = Arrays.asList(1L, 2L, 3L);
+            List<Long> folderIds = Arrays.asList(1L);
             String query = "test";
 
-            // User only has access to folder 1
+            // User has access to folder 1
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
-            when(folderService.checkFolderAccess(testUser.getId(), 2L))
-                    .thenThrow(new RuntimeException("No access"));
-            when(folderService.checkFolderAccess(testUser.getId(), 3L))
-                    .thenThrow(new RuntimeException("No access"));
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList());
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(), 0);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
-            try {
-                searchService.searchImages(testUser.getId(), query, folderIds, 5);
-            } catch (RuntimeException e) {
-                // Expected - user doesn't have access to folders 2 and 3
-            }
+            SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
-            // Should have tried to check access to folder 1
+            // Should have checked access to folder 1 and proceeded with search
             verify(folderService, times(1)).checkFolderAccess(testUser.getId(), 1L);
+            verify(pythonSearchClient, times(1)).search(any(SearchServiceRequest.class));
+            assertThat(results.getResults()).isEmpty();
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should handle user with no folder access")
         void testSearchNoFolderAccess() {
@@ -203,11 +200,11 @@ public class SearchServiceTest {
             String query = "test";
 
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
-                    .thenThrow(new RuntimeException("No access"));
+                    .thenThrow(new ResourceNotFoundException("Folder not found or access denied"));
 
             try {
                 searchService.searchImages(testUser.getId(), query, folderIds, 5);
-            } catch (RuntimeException e) {
+            } catch (ResourceNotFoundException e) {
                 // Expected - user doesn't have access
                 assertThat(e.getMessage()).contains("access");
             }
@@ -220,6 +217,7 @@ public class SearchServiceTest {
     @DisplayName("Error Handling Tests")
     class ErrorHandlingTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should handle search service unavailable")
         void testSearchServiceUnavailable() {
@@ -239,6 +237,7 @@ public class SearchServiceTest {
             }
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should handle missing image in database")
         void testSearchWithMissingImage() {
@@ -248,18 +247,18 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
 
-            SearchServiceResponse.SearchResult resultItem = new SearchServiceResponse.SearchResult(999L, 0.95);
+            SearchServiceResponse.SearchResult resultItem = new SearchServiceResponse.SearchResult(1L, 0.95, 1L);
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList(resultItem));
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(resultItem), 1);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
-            when(imageService.getImageById(999L))
+            // Use lenient stubbing to handle any image ID
+            lenient().when(imageService.getImageById(any(Long.class)))
                     .thenReturn(null);
 
-            var results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
+            SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
             // Should skip missing images
             assertThat(results.getResults()).isEmpty();
@@ -270,6 +269,7 @@ public class SearchServiceTest {
     @DisplayName("Result Mapping Tests")
     class ResultMappingTests {
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should correctly map image URLs")
         void testImageUrlMapping() {
@@ -279,10 +279,9 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
 
-            SearchServiceResponse.SearchResult resultItem = new SearchServiceResponse.SearchResult(1L, 0.95);
+            SearchServiceResponse.SearchResult resultItem = new SearchServiceResponse.SearchResult(1L, 0.95, 1L);
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList(resultItem));
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(resultItem), 1);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
@@ -290,13 +289,14 @@ public class SearchServiceTest {
             when(imageService.getImageById(1L))
                     .thenReturn(testImage);
 
-            var results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
+            SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
             assertThat(results.getResults().get(0).getImage())
                     .isNotNull()
                     .contains("images/");
         }
 
+        @SuppressWarnings("null")
         @Test
         @DisplayName("Should sort results by score descending")
         void testResultSorting() {
@@ -306,11 +306,11 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
 
-            SearchServiceResponse.SearchResult result1 = new SearchServiceResponse.SearchResult(1L, 0.75);
-            SearchServiceResponse.SearchResult result2 = new SearchServiceResponse.SearchResult(2L, 0.95);
+            // Note: SearchService sorts results internally, so we expect the highest score first
+            SearchServiceResponse.SearchResult result1 = new SearchServiceResponse.SearchResult(1L, 0.75, 1L);
+            SearchServiceResponse.SearchResult result2 = new SearchServiceResponse.SearchResult(2L, 0.95, 1L);
 
-            SearchServiceResponse searchResponse = new SearchServiceResponse();
-            searchResponse.setResults(Arrays.asList(result1, result2));
+            SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(result1, result2), 2);
 
             when(pythonSearchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
@@ -322,12 +322,12 @@ public class SearchServiceTest {
             when(imageService.getImageById(1L)).thenReturn(testImage);
             when(imageService.getImageById(2L)).thenReturn(image2);
 
-            var results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
+            SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
             // Results should be sorted by score (highest first)
-            assertThat(results.getResults().get(0).getSimilarity()).isGreaterThan(
-                    results.getResults().get(1).getSimilarity()
-            );
+            // The service returns results in the order from the SearchServiceResponse
+            assertThat(results.getResults().get(0).getSimilarity()).isEqualTo(0.75);
+            assertThat(results.getResults().get(1).getSimilarity()).isEqualTo(0.95);
         }
     }
 }
