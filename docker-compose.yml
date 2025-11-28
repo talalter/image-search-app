@@ -19,7 +19,7 @@ services:
     volumes:
       # Persist data outside container
       - app-data:/app/data
-      - postgres-data:/var/lib/postgresql/15/main
+      - postgres-data:/var/lib/postgresql/16/main
       - elasticsearch-data:/var/lib/elasticsearch
     ports:
       - "3000:3000"   # React Frontend
