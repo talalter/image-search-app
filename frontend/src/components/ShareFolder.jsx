@@ -44,11 +44,29 @@ function ShareFolder({ onClose, inline = false }) {
       return;
     }
 
+    const folderId = parseInt(selectedFolder);
+    if (isNaN(folderId) || folderId <= 0) {
+      setError('Invalid folder selection');
+      return;
+    }
+
     setLoading(true);
 
     try {
       const token = localStorage.getItem('token');
-      await shareFolder({ token, folder_id: parseInt(selectedFolder), username: username.trim(), permission });
+      
+      if (!token) {
+        setError('You are not logged in. Please login first.');
+        setLoading(false);
+        return;
+      }
+
+      const payload = { token, folderId, targetUsername: username.trim(), permission };
+      
+      // Debug log to see what's being sent
+      console.log('ShareFolder payload:', payload);
+      
+      await shareFolder(payload);
 
       setMessage(`✅ Folder shared successfully with ${username}!`);
       setUsername('');
