@@ -11,14 +11,13 @@ dist/
 build/
 venv/
 env/
-ENV/
-talenv/
+
 
 # Data directories (images, indexes, database)
 data/
 images/
 static/uploads/
-
+mydocs/
 # FAISS indexes
 *.faiss
 *.index
@@ -65,6 +64,12 @@ dist/
 *.class
 *.jar
 !gradle-wrapper.jar
+
+# Gradle cache and build files
+.gradle/
+**/build/
+gradle-app.setting
+!gradle/wrapper/gradle-wrapper.jar
 
 # Frontend
 node_modules/
