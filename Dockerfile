@@ -51,8 +51,7 @@ RUN wget -qO - https://artifacts.elastic.co/GPG-KEY-elasticsearch | gpg --dearmo
     && rm -rf /var/lib/apt/lists/*
 
 # Create application user and directories
-RUN groupadd -r appuser && useradd -r -g appuser appuser \
-    && useradd -r elasticsearch
+RUN groupadd -r appuser && useradd -r -g appuser appuser
 
 # Create application directory and set up structure
 WORKDIR /app
