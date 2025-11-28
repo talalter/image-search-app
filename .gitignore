@@ -30,6 +30,9 @@ static/uploads/
 *.npy
 *.h5
 *.pb
+*.onnx
+models/
+**/models/
 
 # Databases
 *.sqlite
