@@ -1,13 +1,11 @@
 # database.py
 import psycopg2
-import psycopg2.extras
 import os
 from datetime import datetime, timezone
 from typing import Optional, Dict, Any
 from contextlib import contextmanager
 from logging_config import get_logger, log_database_operation
 from exceptions import (
-    DatabaseException,
     DuplicateRecordException,
     RecordNotFoundException,
     DatabaseOperationException,
@@ -55,7 +53,7 @@ def get_db_connection():
             # Connection automatically committed on success, rolled back on error, and closed
 
     This ensures connections are properly closed even if exceptions occur,
-    preventing connection leaks (similar to Java's try-with-resources pattern).
+    preventing connection leaks.
     """
     conn = psycopg2.connect(
         host=DB_HOST,
@@ -75,15 +73,11 @@ def get_db_connection():
 
 def init_db():
     """
-    Initialize PostgreSQL database schema.
-    Note: This will use the same database and tables as the Java backend.
+    Initialize database schema.
     Tables may already exist if Java backend has run first.
     """
     conn = get_conn()
     cur = conn.cursor()
-
-    # PostgreSQL uses SERIAL for auto-increment and VARCHAR/TEXT
-    # TIMESTAMP defaults work differently in PostgreSQL
     cur.execute("""
         CREATE TABLE IF NOT EXISTS users (
             id BIGSERIAL PRIMARY KEY,
