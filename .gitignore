@@ -17,7 +17,10 @@ env/
 data/
 images/
 static/uploads/
-mydocs/
+
+#files for me
+my-docs/
+my-scripts/
 # FAISS indexes
 *.faiss
 *.index
