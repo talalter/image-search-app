@@ -1,5 +1,6 @@
 package com.imagesearch.service;
 
+import com.imagesearch.client.SearchClient;
 import com.imagesearch.exception.DuplicateResourceException;
 import com.imagesearch.exception.ResourceNotFoundException;
 import com.imagesearch.exception.UnauthorizedException;
@@ -7,7 +8,9 @@ import com.imagesearch.model.dto.request.LoginRequest;
 import com.imagesearch.model.dto.request.RegisterRequest;
 import com.imagesearch.model.dto.response.LoginResponse;
 import com.imagesearch.model.dto.response.RegisterResponse;
+import com.imagesearch.model.entity.Folder;
 import com.imagesearch.model.entity.User;
+import com.imagesearch.repository.FolderRepository;
 import com.imagesearch.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -20,6 +23,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Comparator;
+import java.util.List;
 import java.util.stream.Stream;
 
 /**
@@ -37,11 +41,19 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final SessionService sessionService;
+    private final FolderRepository folderRepository;
+    private final SearchClient searchClient;
     private final BCryptPasswordEncoder passwordEncoder;
 
-    public UserService(UserRepository userRepository, SessionService sessionService) {
+    public UserService(
+            UserRepository userRepository,
+            SessionService sessionService,
+            FolderRepository folderRepository,
+            SearchClient searchClient) {
         this.userRepository = userRepository;
         this.sessionService = sessionService;
+        this.folderRepository = folderRepository;
+        this.searchClient = searchClient;
         this.passwordEncoder = new BCryptPasswordEncoder();
     }
 
@@ -115,6 +127,12 @@ public class UserService {
     /**
      * Delete user account and all associated data.
      *
+     * IMPORTANT: Deletion order matters:
+     * 1. Delete search indices BEFORE deleting user from database
+     *    (because we need to query folders, which cascade-delete with user)
+     * 2. Delete user from database
+     * 3. Delete physical files
+     *
      * @param userId User ID to delete
      */
     @SuppressWarnings("null")
@@ -128,17 +146,17 @@ public class UserService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User", userId));
 
-        // 1. Invalidate all sessions
+        // 1. Delete search indices (requires folder query before user deletion)
+        deleteUserSearchIndices(userId);
+
+        // 2. Invalidate all sessions
         sessionService.invalidateAllUserSessions(user);
 
-        // 2. Delete user (cascades to folders, images, shares via JPA)
+        // 3. Delete user (cascades to folders, images, shares via JPA)
         userRepository.delete(user);
 
-        // 3. Delete physical image files from filesystem
+        // 4. Delete physical image files from filesystem
         deleteUserImages(userId);
-
-        // 4. Delete FAISS indices
-        deleteUserIndices(userId);
 
         logger.info("User account and all associated data deleted: id={}", userId);
     }
@@ -169,26 +187,44 @@ public class UserService {
     }
 
     /**
-     * Delete all FAISS indices for a user.
+     * Delete all search indices for a user.
+     *
+     * Iterates through all user folders and deletes their search indices.
+     * This must be called BEFORE deleting the user from the database,
+     * because we need to query folders (which cascade-delete with the user).
+     *
+     * The actual backend (FAISS or Elasticsearch) is determined by the active SearchClient implementation.
      */
-    private void deleteUserIndices(Long userId) {
+    private void deleteUserSearchIndices(Long userId) {
         try {
-            Path currentDir = Paths.get("").toAbsolutePath();
-            Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
-                ? currentDir.getParent()
-                : currentDir;
-            Path userIndicesPath = projectRoot.resolve("data").resolve("indexes").resolve(userId.toString());
-
-            if (Files.exists(userIndicesPath)) {
-                try (Stream<Path> paths = Files.walk(userIndicesPath)) {
-                    paths.sorted(Comparator.reverseOrder())
-                         .map(Path::toFile)
-                         .forEach(File::delete);
-                }
-                logger.info("Deleted user FAISS indices: {}", userIndicesPath);
+            // Get user entity
+            @SuppressWarnings("null")
+            User user = userRepository.findById(userId).orElse(null);
+            if (user == null) {
+                logger.warn("Cannot delete search indices: user {} not found", userId);
+                return;
             }
-        } catch (IOException e) {
-            logger.error("Failed to delete user indices for userId=" + userId, e);
+
+            // Get all folders owned by this user
+            List<Folder> userFolders = folderRepository.findByUser(user);
+
+            if (userFolders.isEmpty()) {
+                logger.info("No folders found for user {}, no search indices to delete", userId);
+                return;
+            }
+
+            logger.info("Deleting search indices for {} folders of user {}",
+                       userFolders.size(), userId);
+
+            // Delete search index for each folder (delegates to active backend)
+            for (Folder folder : userFolders) {
+                searchClient.deleteIndex(userId, folder.getId());
+            }
+
+            logger.info("Completed search index deletion for user {}", userId);
+
+        } catch (Exception e) {
+            logger.error("Failed to delete search indices for userId=" + userId, e);
             // Don't throw - best effort cleanup
         }
     }

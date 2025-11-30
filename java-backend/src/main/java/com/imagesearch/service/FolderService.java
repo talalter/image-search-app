@@ -1,6 +1,6 @@
 package com.imagesearch.service;
 
-import com.imagesearch.client.PythonSearchClient;
+import com.imagesearch.client.SearchClient;
 import com.imagesearch.exception.DuplicateResourceException;
 import com.imagesearch.exception.ForbiddenException;
 import com.imagesearch.exception.ResourceNotFoundException;
@@ -49,19 +49,19 @@ public class FolderService {
     private final FolderShareRepository folderShareRepository;
     private final ImageRepository imageRepository;
     private final UserRepository userRepository;
-    private final PythonSearchClient pythonSearchClient;
+    private final SearchClient searchClient;
 
     public FolderService(
             FolderRepository folderRepository,
             FolderShareRepository folderShareRepository,
             ImageRepository imageRepository,
             UserRepository userRepository,
-            PythonSearchClient pythonSearchClient) {
+            SearchClient searchClient) {
         this.folderRepository = folderRepository;
         this.folderShareRepository = folderShareRepository;
         this.imageRepository = imageRepository;
         this.userRepository = userRepository;
-        this.pythonSearchClient = pythonSearchClient;
+        this.searchClient = searchClient;
     }
 
     /**
@@ -132,8 +132,8 @@ public class FolderService {
                     folder.setFolderName(folderName);
                     Folder savedFolder = folderRepository.save(folder);
 
-                    // Create FAISS index in Python service
-                    pythonSearchClient.createFaissIndex(userId, savedFolder.getId());
+                    // Create search index (delegates to active backend)
+                    searchClient.createIndex(userId, savedFolder.getId());
 
                     logger.info("Created new folder: id={}, name={}", savedFolder.getId(), folderName);
                     return savedFolder;
@@ -181,8 +181,8 @@ public class FolderService {
             // 2. Delete physical files
             deletePhysicalFolder(userId, folderId);
 
-            // 3. Delete FAISS index
-            pythonSearchClient.deleteFaissIndex(userId, folderId);
+            // 3. Delete search index (delegates to active backend)
+            searchClient.deleteIndex(userId, folderId);
 
             logger.info("Deleted folder: id={}", folderId);
         }

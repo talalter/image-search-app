@@ -1,6 +1,6 @@
 package com.imagesearch.service;
 
-import com.imagesearch.client.PythonSearchClient;
+import com.imagesearch.client.SearchClient;
 import com.imagesearch.client.dto.EmbedImagesRequest;
 import com.imagesearch.exception.BadRequestException;
 import com.imagesearch.model.dto.response.UploadResponse;
@@ -38,17 +38,17 @@ public class ImageService {
     private final ImageRepository imageRepository;
     private final UserRepository userRepository;
     private final FolderService folderService;
-    private final PythonSearchClient pythonSearchClient;
+    private final SearchClient searchClient;
 
     public ImageService(
             ImageRepository imageRepository,
             UserRepository userRepository,
             FolderService folderService,
-            PythonSearchClient pythonSearchClient) {
+            SearchClient searchClient) {
         this.imageRepository = imageRepository;
         this.userRepository = userRepository;
         this.folderService = folderService;
-        this.pythonSearchClient = pythonSearchClient;
+        this.searchClient = searchClient;
     }
 
     /**
@@ -121,7 +121,7 @@ public class ImageService {
             }
         }
 
-        // Trigger background embedding generation in Python service
+        // Trigger background embedding generation (delegates to active backend)
         // Send all images in a single request to avoid concurrency issues
         if (!imagesToEmbed.isEmpty()) {
             EmbedImagesRequest embedRequest = new EmbedImagesRequest(
@@ -129,7 +129,7 @@ public class ImageService {
                 folder.getId(),
                 imagesToEmbed
             );
-            pythonSearchClient.embedImages(embedRequest);
+            searchClient.embedImages(embedRequest);
         }
 
         logger.info("Uploaded {} images successfully", uploadedCount);
