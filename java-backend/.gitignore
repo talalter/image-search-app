@@ -46,3 +46,6 @@ Thumbs.db
 images/
 faiss_indexes/
 *.log
+
+# Environment variables (contains secrets)
+.env
