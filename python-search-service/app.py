@@ -79,6 +79,7 @@ class SearchResult(BaseModel):
     """Individual search result."""
     image_id: int
     score: float
+    folder_id: int
 
     model_config = {"populate_by_name": True}
 
@@ -127,7 +128,7 @@ def health():
         "service": "python-search-service"
     }
 
-@app.post("/search", response_model=SearchResponse)
+@app.post("/api/search", response_model=SearchResponse)
 def search_images(request: SearchRequest):
     """
     Perform semantic image search using FAISS.
@@ -148,7 +149,7 @@ def search_images(request: SearchRequest):
         folder_owner_map = {int(k): v for k, v in request.folder_owner_map.items()}
 
         # Perform FAISS search
-        distances, indices = search_handler.search_with_ownership(
+        distances, indices, folder_ids_list = search_handler.search_with_ownership(
             query=request.query,
             folder_ids=request.folder_ids,
             folder_owner_map=folder_owner_map,
@@ -161,7 +162,8 @@ def search_images(request: SearchRequest):
             for i in range(len(indices[0])):
                 results.append(SearchResult(
                     image_id=int(indices[0][i]),
-                    score=float(distances[0][i])
+                    score=float(distances[0][i]),
+                    folder_id=int(folder_ids_list[0][i])
                 ))
 
         logger.info(f"Search completed: {len(results)} results found")
@@ -171,7 +173,7 @@ def search_images(request: SearchRequest):
         logger.error(f"Search failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Search failed: {str(e)}")
 
-@app.post("/embed-images")
+@app.post("/api/embed-images")
 def embed_images(request: EmbedImagesRequest):
     """
     Generate embeddings for uploaded images and add to FAISS index.
@@ -214,7 +216,7 @@ def embed_images(request: EmbedImagesRequest):
         logger.error(f"Embedding failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Embedding failed: {str(e)}")
 
-@app.post("/embed-text")
+@app.post("/api/embed-text")
 def embed_text(request: dict):
     """
     Generate embedding for a single text query.
@@ -245,7 +247,7 @@ def embed_text(request: dict):
         logger.error(f"Text embedding failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Text embedding failed: {str(e)}")
 
-@app.post("/embed-image")
+@app.post("/api/embed-image")
 def embed_image(request: dict):
     """
     Generate embedding for a single image file.
@@ -276,7 +278,7 @@ def embed_image(request: dict):
         logger.error(f"Image embedding failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Image embedding failed: {str(e)}")
 
-@app.post("/create-index")
+@app.post("/api/create-index")
 def create_index(request: CreateIndexRequest):
     """
     Create a new FAISS index for a folder.
@@ -302,7 +304,7 @@ def create_index(request: CreateIndexRequest):
         logger.error(f"Index creation failed: {e}", exc_info=True)
         raise HTTPException(status_code=500, detail=f"Index creation failed: {str(e)}")
 
-@app.delete("/delete-index/{user_id}/{folder_id}")
+@app.delete("/api/delete-index/{user_id}/{folder_id}")
 def delete_index(user_id: int, folder_id: int):
     """
     Delete FAISS index for a folder.

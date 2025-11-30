@@ -149,13 +149,17 @@ class SearchHandler:
             k: Number of results to return
 
         Returns:
-            Tuple of (distances, indices) where distances are similarity scores
+            Tuple of (distances, indices, folder_ids_list) where:
+            - distances are similarity scores
+            - indices are image IDs
+            - folder_ids_list are the folder IDs for each result
         """
         # Generate query embedding
         query_embedding = self.embedding_service.embed_text(query).astype('float32').reshape(1, -1)
         query_embedding = self._normalize(query_embedding)
 
         # Use heap to efficiently keep top-k results across all folders
+        # Each heap entry is: (distance, image_id, folder_id)
         heap = []
 
         logger.info(f"Searching folders: {folder_ids}")
@@ -180,20 +184,21 @@ class SearchHandler:
 
             distances, indices = index.search(query_embedding, local_k)
 
-            # Add results to heap
+            # Add results to heap with folder_id
             for d, i in zip(distances[0], indices[0]):
                 if len(heap) < k:
-                    heapq.heappush(heap, (d, int(i)))
+                    heapq.heappush(heap, (d, int(i), folder_id))
                 else:
-                    heapq.heappushpop(heap, (d, int(i)))
+                    heapq.heappushpop(heap, (d, int(i), folder_id))
 
         # Extract top-k results
         top_results = heapq.nlargest(k, heap, key=lambda x: x[0])
         distances = [[res[0] for res in top_results]]
         indices = [[res[1] for res in top_results]]
+        folder_ids_list = [[res[2] for res in top_results]]
 
         logger.info(f"Search completed: {len(top_results)} results")
-        return distances, indices
+        return distances, indices, folder_ids_list
 
     def delete_faiss_index(self, user_id: int, folder_id: int):
         """
