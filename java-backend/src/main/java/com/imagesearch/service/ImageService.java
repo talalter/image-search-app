@@ -11,6 +11,7 @@ import com.imagesearch.repository.ImageRepository;
 import com.imagesearch.repository.UserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
@@ -121,15 +122,10 @@ public class ImageService {
             }
         }
 
-        // Trigger background embedding generation (delegates to active backend)
-        // Send all images in a single request to avoid concurrency issues
+        // Trigger background embedding generation in batches
+        // Process images in batches to avoid timeout issues with large uploads
         if (!imagesToEmbed.isEmpty()) {
-            EmbedImagesRequest embedRequest = new EmbedImagesRequest(
-                userId,
-                folder.getId(),
-                imagesToEmbed
-            );
-            searchClient.embedImages(embedRequest);
+            embedImagesInBatches(userId, folder.getId(), imagesToEmbed);
         }
 
         logger.info("Uploaded {} images successfully", uploadedCount);
@@ -205,5 +201,58 @@ public class ImageService {
         }
         return imageRepository.findById(imageId)
                 .orElse(null);
+    }
+
+    /**
+     * Process image embeddings in batches asynchronously.
+     * This prevents timeouts when uploading large numbers of images (100s-1000s).
+     * 
+     * Strategy:
+     * - Splits images into batches of 50 (configurable)
+     * - Each batch is sent to search service sequentially
+     * - Runs in background thread so upload API returns immediately
+     * - Users can search images as batches complete
+     * 
+     * @param userId User ID
+     * @param folderId Folder ID
+     * @param imagesToEmbed List of all images to embed
+     */
+    @Async
+    public void embedImagesInBatches(Long userId, Long folderId, List<EmbedImagesRequest.ImageInfo> imagesToEmbed) {
+        final int BATCH_SIZE = 50; // Process 50 images at a time
+        int totalImages = imagesToEmbed.size();
+        int totalBatches = (int) Math.ceil((double) totalImages / BATCH_SIZE);
+        
+        logger.info("Starting async batch embedding: {} images in {} batches for user {} folder {}", 
+                   totalImages, totalBatches, userId, folderId);
+        
+        for (int batchNum = 0; batchNum < totalBatches; batchNum++) {
+            int startIdx = batchNum * BATCH_SIZE;
+            int endIdx = Math.min(startIdx + BATCH_SIZE, totalImages);
+            List<EmbedImagesRequest.ImageInfo> batch = imagesToEmbed.subList(startIdx, endIdx);
+            
+            logger.info("Processing batch {}/{}: {} images (total progress: {}/{})", 
+                       batchNum + 1, totalBatches, batch.size(), endIdx, totalImages);
+            
+            try {
+                EmbedImagesRequest request = new EmbedImagesRequest(userId, folderId, batch);
+                searchClient.embedImages(request);
+                
+                logger.info("Batch {}/{} completed successfully", batchNum + 1, totalBatches);
+                
+                // Small delay between batches to avoid overwhelming the search service
+                if (batchNum < totalBatches - 1) {
+                    Thread.sleep(1000); // 1 second between batches
+                }
+                
+            } catch (Exception e) {
+                logger.error("Failed to embed batch {}/{} for user {} folder {}: {}", 
+                           batchNum + 1, totalBatches, userId, folderId, e.getMessage());
+                // Continue with next batch even if one fails
+            }
+        }
+        
+        logger.info("Completed async batch embedding for user {} folder {}: {}/{} images processed", 
+                   userId, folderId, totalImages, totalImages);
     }
 }

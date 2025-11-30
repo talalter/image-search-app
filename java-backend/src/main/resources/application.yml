@@ -41,7 +41,7 @@ search:
 # Used when search.backend.type=python
 search-service:
   base-url: ${SEARCH_SERVICE_URL:http://localhost:5000}
-  timeout-seconds: 30
+  timeout-seconds: 60
 
 # Java Search Service Configuration (Elasticsearch + ONNX)
 # Only used when SEARCH_BACKEND=java
