@@ -37,8 +37,7 @@ models/
 **/models/
 
 # Databases
-*.sqlite
-*.sqlite3
+
 *.db
 *.sql
 
