@@ -1,6 +1,6 @@
 package com.imagesearch.service;
 
-import com.imagesearch.client.PythonSearchClient;
+import com.imagesearch.client.SearchClient;
 import com.imagesearch.client.dto.SearchServiceRequest;
 import com.imagesearch.client.dto.SearchServiceResponse;
 import com.imagesearch.model.dto.response.SearchResponse;
@@ -32,7 +32,7 @@ import static org.mockito.Mockito.lenient;
  *
  * Tests cover:
  * - Search functionality
- * - Python search client integration
+ * - Search client integration (supports both Python and Java backends)
  * - Folder permission checks
  * - Result mapping
  */
@@ -41,7 +41,7 @@ import static org.mockito.Mockito.lenient;
 public class SearchServiceTest {
 
     @Mock
-    private PythonSearchClient pythonSearchClient;
+    private SearchClient searchClient;
 
     @Mock
     private FolderRepository folderRepository;
@@ -99,7 +99,7 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(resultItem), 1);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             when(imageService.getImageById(1L))
@@ -113,7 +113,7 @@ public class SearchServiceTest {
             assertThat(results.getResults()).hasSize(1);
             assertThat(results.getResults().get(0).getSimilarity()).isEqualTo(0.95);
 
-            verify(pythonSearchClient, times(1)).search(any(SearchServiceRequest.class));
+            verify(searchClient, times(1)).search(any(SearchServiceRequest.class));
         }
         @SuppressWarnings("null")
         @Test
@@ -127,7 +127,7 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(), 0);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
@@ -155,12 +155,12 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(), 0);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
-            verify(pythonSearchClient, times(1)).search(any(SearchServiceRequest.class));
+            verify(searchClient, times(1)).search(any(SearchServiceRequest.class));
         }
     }
 
@@ -181,14 +181,14 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(), 0);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             SearchResponse results = searchService.searchImages(testUser.getId(), query, folderIds, 5);
 
             // Should have checked access to folder 1 and proceeded with search
             verify(folderService, times(1)).checkFolderAccess(testUser.getId(), 1L);
-            verify(pythonSearchClient, times(1)).search(any(SearchServiceRequest.class));
+            verify(searchClient, times(1)).search(any(SearchServiceRequest.class));
             assertThat(results.getResults()).isEmpty();
         }
 
@@ -209,7 +209,7 @@ public class SearchServiceTest {
                 assertThat(e.getMessage()).contains("access");
             }
 
-            verify(pythonSearchClient, never()).search(any(SearchServiceRequest.class));
+            verify(searchClient, never()).search(any(SearchServiceRequest.class));
         }
     }
 
@@ -227,7 +227,7 @@ public class SearchServiceTest {
             when(folderService.checkFolderAccess(testUser.getId(), 1L))
                     .thenReturn(testFolder);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenThrow(new RuntimeException("Service unavailable"));
 
             try {
@@ -251,7 +251,7 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(resultItem), 1);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             // Use lenient stubbing to handle any image ID
@@ -283,7 +283,7 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(resultItem), 1);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             when(imageService.getImageById(1L))
@@ -312,7 +312,7 @@ public class SearchServiceTest {
 
             SearchServiceResponse searchResponse = new SearchServiceResponse(Arrays.asList(result1, result2), 2);
 
-            when(pythonSearchClient.search(any(SearchServiceRequest.class)))
+            when(searchClient.search(any(SearchServiceRequest.class)))
                     .thenReturn(searchResponse);
 
             Image image2 = new Image();
