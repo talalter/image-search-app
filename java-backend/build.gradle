@@ -31,6 +31,9 @@ dependencies {
     // Development Tools (auto-reload)
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+    // Environment Variables from .env file
+    implementation 'io.github.cdimascio:dotenv-java:3.0.0'
+
     // PostgreSQL Driver
     runtimeOnly 'org.postgresql:postgresql'
 
@@ -41,6 +44,13 @@ dependencies {
     // Password Hashing (BCrypt)
     implementation 'org.springframework.security:spring-security-crypto:6.2.0'
 
+    // Resilience4j (Circuit Breaker, Retry, Rate Limiter)
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    implementation 'org.springframework.boot:spring-boot-starter-aop'
+    implementation 'io.github.resilience4j:resilience4j-spring-boot3:2.1.0'
+    implementation 'io.github.resilience4j:resilience4j-circuitbreaker:2.1.0'
+    implementation 'io.github.resilience4j:resilience4j-timelimiter:2.1.0'
+
     // JSON Processing
     implementation 'com.fasterxml.jackson.core:jackson-databind'
 
@@ -50,6 +60,7 @@ dependencies {
     testImplementation 'org.mockito:mockito-core:5.7.0'
     testImplementation 'org.mockito:mockito-junit-jupiter:5.7.0'
     testImplementation 'org.assertj:assertj-core:3.24.2'
+    testImplementation 'com.squareup.okhttp3:mockwebserver:4.12.0'
 }
 
 tasks.named('test') {
