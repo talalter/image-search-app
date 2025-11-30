@@ -31,14 +31,24 @@ server:
   servlet:
     context-path: /
 
-# Search Service Configuration (Plugin Architecture)
-# Can point to either:
-# - Python Search Service: http://localhost:5000 (default)
-# - Java Search Service: http://localhost:5001
-# Set via environment variable: SEARCH_SERVICE_URL
+# Search Backend Configuration
+# Determines which search implementation to use as primary
+search:
+  backend:
+    type: ${SEARCH_BACKEND:python}  # Default to Python search service
+
+# Search Service Configuration
+# Used when search.backend.type=python
 search-service:
   base-url: ${SEARCH_SERVICE_URL:http://localhost:5000}
   timeout-seconds: 30
+
+# Java Search Service Configuration (Elasticsearch + ONNX)
+# Only used when SEARCH_BACKEND=java
+java-search-service:
+  base-url: ${JAVA_SEARCH_SERVICE_URL:http://localhost:5001}
+  timeout-seconds: 30
+  enabled: ${JAVA_SEARCH_ENABLED:false}  # Disabled by default
 
 # Storage Configuration
 storage:
@@ -54,3 +64,76 @@ logging:
     com.imagesearch: INFO
     org.springframework.web: INFO
     org.hibernate.SQL: DEBUG
+    io.github.resilience4j: DEBUG
+
+# Resilience4j Circuit Breaker Configuration
+resilience4j:
+  circuitbreaker:
+    instances:
+      # Circuit breaker for Python search service (FAISS-based)
+      pythonSearchService:
+        # Sliding window tracks last 100 requests
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 100
+
+        # Open circuit if 50% of requests fail
+        failureRateThreshold: 50
+
+        # Open circuit if 50% of requests are slow (>10 seconds)
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 10s
+
+        # Need at least 10 requests before circuit can open
+        minimumNumberOfCalls: 10
+
+        # Stay OPEN for 60 seconds before trying HALF_OPEN
+        waitDurationInOpenState: 60s
+
+        # In HALF_OPEN state, allow 5 test requests
+        permittedNumberOfCallsInHalfOpenState: 5
+
+        # Record these exceptions as failures
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.util.concurrent.TimeoutException
+          - java.io.IOException
+
+        # Ignore these exceptions (don't count as failures)
+        ignoreExceptions:
+          - com.imagesearch.exception.ResourceNotFoundException
+
+      # Circuit breaker for Java search service (Elasticsearch-based)
+      javaSearchService:
+        slidingWindowType: COUNT_BASED
+        slidingWindowSize: 100
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 10s
+        minimumNumberOfCalls: 10
+        waitDurationInOpenState: 60s
+        permittedNumberOfCallsInHalfOpenState: 5
+        recordExceptions:
+          - org.springframework.web.reactive.function.client.WebClientRequestException
+          - org.springframework.web.reactive.function.client.WebClientResponseException
+          - java.util.concurrent.TimeoutException
+          - java.io.IOException
+        ignoreExceptions:
+          - com.imagesearch.exception.ResourceNotFoundException
+
+# Spring Boot Actuator - Expose circuit breaker metrics
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,circuitbreakerevents
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

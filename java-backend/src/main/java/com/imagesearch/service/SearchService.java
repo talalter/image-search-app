@@ -1,6 +1,6 @@
 package com.imagesearch.service;
 
-import com.imagesearch.client.PythonSearchClient;
+import com.imagesearch.client.SearchClient;
 import com.imagesearch.client.dto.SearchServiceRequest;
 import com.imagesearch.client.dto.SearchServiceResponse;
 import com.imagesearch.model.dto.response.SearchResponse;
@@ -34,7 +34,7 @@ public class SearchService {
 
     private static final Logger logger = LoggerFactory.getLogger(SearchService.class);
 
-    private final PythonSearchClient pythonSearchClient;
+    private final SearchClient searchClient;
     private final FolderRepository folderRepository;
     private final FolderService folderService;
     private final ImageService imageService;
@@ -43,11 +43,11 @@ public class SearchService {
     private String storageBackend;
 
     public SearchService(
-            PythonSearchClient pythonSearchClient,
+            SearchClient searchClient,
             FolderRepository folderRepository,
             FolderService folderService,
             ImageService imageService) {
-        this.pythonSearchClient = pythonSearchClient;
+        this.searchClient = searchClient;
         this.folderRepository = folderRepository;
         this.folderService = folderService;
         this.imageService = imageService;
@@ -114,7 +114,7 @@ public class SearchService {
             return new SearchResponse(List.of());
         }
 
-        // Step 2: Call Python microservice for FAISS search
+        // Step 2: Call search microservice (delegates to active backend)
         SearchServiceRequest searchRequest = new SearchServiceRequest(
             userId,
             query,
@@ -123,12 +123,12 @@ public class SearchService {
             topK != null ? topK : 5
         );
 
-        SearchServiceResponse pythonResponse = pythonSearchClient.search(searchRequest);
+        SearchServiceResponse searchResponse = searchClient.search(searchRequest);
 
         // Step 3: Enrich results with database metadata
         List<SearchResponse.ImageSearchResult> results = new ArrayList<>();
 
-        for (SearchServiceResponse.SearchResult result : pythonResponse.getResults()) {
+        for (SearchServiceResponse.SearchResult result : searchResponse.getResults()) {
             Image image = imageService.getImageById(result.getImageId());
             if (image != null) {
                 String imageUrl = getImageUrl(image.getFilepath());
