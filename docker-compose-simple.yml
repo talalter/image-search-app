@@ -1,0 +1,159 @@
+version: '3.8'
+
+# Simplified Docker Compose for Java Backend Demo
+# Services: PostgreSQL + Python Search Service + Java Backend + React Frontend
+# Perfect for interviews and demonstrations
+
+services:
+  # Init container to set up volume permissions
+  volume-init:
+    image: alpine:latest
+    container_name: imagesearch-volume-init
+    command: >
+      sh -c "
+        mkdir -p /app/data/uploads /app/data/indexes &&
+        chown -R 1000:1000 /app/data &&
+        chmod -R 775 /app/data &&
+        echo 'Volume initialized with UID/GID 1000'
+      "
+    volumes:
+      - app-data:/app/data
+    networks:
+      - app-network
+
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: imagesearch-postgres
+    environment:
+      POSTGRES_DB: imagesearch
+      POSTGRES_USER: imageuser
+      POSTGRES_PASSWORD: imagepass123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U imageuser -d imagesearch"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+  # Python Search Service - CLIP + FAISS
+  python-search-service:
+    build:
+      context: ./python-search-service
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 0
+    container_name: imagesearch-python-search
+    user: "1000:1000"
+    ports:
+      - "5000:5000"
+    volumes:
+      - app-data:/app/data
+    networks:
+      - app-network
+    environment:
+      - PYTHONUNBUFFERED=1
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5000/ || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+        reservations:
+          memory: 2G
+
+  # Java Backend - Spring Boot
+  java-backend:
+    build:
+      context: ./java-backend
+      dockerfile: Dockerfile
+      args:
+        BUILDKIT_INLINE_CACHE: 0
+    container_name: imagesearch-java-backend
+    user: "1000:1000"
+    ports:
+      - "8080:8080"
+    volumes:
+      - app-data:/app/data
+    networks:
+      - app-network
+    environment:
+      # Database
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres:5432/imagesearch
+      - DB_USERNAME=imageuser
+      - DB_PASSWORD=imagepass123
+      # Search Service
+      - SEARCH_SERVICE_URL=http://python-search-service:5000
+      - SEARCH_BACKEND=python
+      # Storage
+      - STORAGE_BACKEND=local
+      - IMAGES_ROOT=/app/data/uploads
+      # JVM
+      - JAVA_OPTS=-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseG1GC
+    depends_on:
+      volume-init:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+      python-search-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.frontend
+      args:
+        REACT_APP_BACKEND: java
+        BUILDKIT_INLINE_CACHE: 0
+    container_name: imagesearch-frontend
+    ports:
+      - "3000:80"
+    networks:
+      - app-network
+    depends_on:
+      java-backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:80/ || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+    name: imagesearch-postgres-data
+  app-data:
+    name: imagesearch-app-data
+
+networks:
+  app-network:
+    name: imagesearch-network
