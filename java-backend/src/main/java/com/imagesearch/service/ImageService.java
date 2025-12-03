@@ -22,6 +22,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Service for image upload and management.
@@ -129,11 +132,13 @@ public class ImageService {
         }
 
         logger.info("Uploaded {} images successfully", uploadedCount);
-        return new UploadResponse(
+        UploadResponse response = new UploadResponse(
             "Successfully uploaded " + uploadedCount + " images. Processing embeddings in background...",
             folder.getId(),
             uploadedCount
         );
+
+        return response;
     }
 
     /**
@@ -201,6 +206,25 @@ public class ImageService {
         }
         return imageRepository.findById(imageId)
                 .orElse(null);
+    }
+
+    /**
+     * Batch lookup images by IDs - performs single database query.
+     *
+     * This is much faster than calling getImageById() in a loop,
+     * especially for search results with many images.
+     *
+     * @param imageIds Set of image IDs
+     * @return Map of imageId -> Image (only includes images that exist)
+     */
+    public Map<Long, Image> getImagesByIds(Set<Long> imageIds) {
+        if (imageIds == null || imageIds.isEmpty()) {
+            return Map.of();
+        }
+
+        List<Image> images = imageRepository.findAllByIdIn(imageIds);
+        return images.stream()
+                .collect(Collectors.toMap(Image::getId, img -> img));
     }
 
     /**

@@ -4,8 +4,6 @@ import com.imagesearch.exception.ForbiddenException;
 import com.imagesearch.exception.ResourceNotFoundException;
 import com.imagesearch.model.dto.response.SearchResponse;
 import com.imagesearch.model.dto.response.UploadResponse;
-import com.imagesearch.model.entity.EmbeddingJob;
-import com.imagesearch.repository.EmbeddingJobRepository;
 import com.imagesearch.service.ImageService;
 import com.imagesearch.service.SearchService;
 import com.imagesearch.service.SessionService;
@@ -16,9 +14,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.util.Arrays;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 /**
  * REST Controller for image management endpoints.
@@ -41,17 +37,14 @@ public class ImageController {
     private final ImageService imageService;
     private final SearchService searchService;
     private final SessionService sessionService;
-    private final EmbeddingJobRepository embeddingJobRepository;
 
     public ImageController(
             ImageService imageService,
             SearchService searchService,
-            SessionService sessionService,
-            EmbeddingJobRepository embeddingJobRepository) {
+            SessionService sessionService) {
         this.imageService = imageService;
         this.searchService = searchService;
         this.sessionService = sessionService;
-        this.embeddingJobRepository = embeddingJobRepository;
     }
 
     /**
@@ -110,47 +103,6 @@ public class ImageController {
         }
 
         SearchResponse response = searchService.searchImages(userId, query, folderIds, topK);
-        return ResponseEntity.ok(response);
-    }
-
-    /**
-     * Get embedding job status.
-     * GET /api/images/job-status/{jobId}
-     *
-     * Path params:
-     * - jobId: Job ID
-     *
-     * Headers:
-     * - token: Session token
-     */
-    @GetMapping("/job-status/{jobId}")
-    public ResponseEntity<Map<String, Object>> getJobStatus(
-            @PathVariable Long jobId,
-            @RequestHeader("token") String token) {
-
-        Long userId = sessionService.validateTokenAndGetUserId(token);
-        logger.info("Job status request: user={}, jobId={}", userId, jobId);
-
-        EmbeddingJob job = embeddingJobRepository.findById(jobId)
-                .orElseThrow(() -> new ResourceNotFoundException("Job not found"));
-
-        if (!job.getUserId().equals(userId)) {
-            throw new ForbiddenException("Not authorized to view this job");
-        }
-
-        Map<String, Object> response = new HashMap<>();
-        response.put("job_id", job.getId());
-        response.put("status", job.getStatus());
-        response.put("total_images", job.getTotalImages());
-        response.put("processed_images", job.getProcessedImages());
-        response.put("progress_percentage",
-            job.getTotalImages() > 0 ? (job.getProcessedImages() * 100.0 / job.getTotalImages()) : 0);
-        response.put("created_at", job.getCreatedAt());
-        response.put("updated_at", job.getUpdatedAt());
-        if (job.getErrorMessage() != null) {
-            response.put("error_message", job.getErrorMessage());
-        }
-
         return ResponseEntity.ok(response);
     }
 }
