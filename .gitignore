@@ -1,6 +1,6 @@
 # Python
 __pycache__/
-.claude
+.claude/
 *.pyc
 *.pyo
 *.pyd
