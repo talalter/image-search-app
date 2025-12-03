@@ -30,11 +30,11 @@ RUN ls -lh /app/build/libs/*.jar
 # Stage 2: Runtime stage with JRE
 FROM eclipse-temurin:17-jre-alpine
 
-# Install wget for health checks and bash for better debugging
-RUN apk add --no-cache wget bash
+# Install wget for health checks, bash for debugging, and su-exec for privilege dropping
+RUN apk add --no-cache wget bash su-exec
 
-# Create non-root user for security
-RUN addgroup -S appuser && adduser -S appuser -G appuser
+# Create non-root user with specific UID/GID for consistency across services
+RUN addgroup -g 1000 appuser && adduser -u 1000 -G appuser -S appuser
 
 WORKDIR /app
 
@@ -44,12 +44,9 @@ COPY --from=builder /app/build/libs/*.jar app.jar
 # Verify JAR was copied
 RUN ls -lh app.jar
 
-# Create directories for data volumes
+# Create directories for data volumes with proper ownership
 RUN mkdir -p /app/data/uploads /app/data/indexes && \
-    chown -R appuser:appuser /app
-
-# Switch to non-root user
-USER appuser
+    chown -R appuser:appuser /app/data
 
 # Expose port
 EXPOSE 8080
@@ -65,6 +62,9 @@ ENV JAVA_OPTS="-XX:+UseContainerSupport \
     -XX:MaxGCPauseMillis=200 \
     -Djava.security.egd=file:/dev/./urandom \
     -Dspring.jmx.enabled=false"
+
+# Run as appuser
+USER appuser
 
 # Run the application
 ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

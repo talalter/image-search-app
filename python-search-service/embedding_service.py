@@ -96,9 +96,10 @@ class EmbeddingService:
         if os.path.isabs(filepath):
             return filepath
         
-        # If path starts with "images/", convert to data/uploads/images/
+        # If path starts with "images/", convert to data/uploads/
+        # Format: images/{userId}/{folderId}/filename.jpg -> data/uploads/{userId}/{folderId}/filename.jpg
         if filepath.startswith("images/"):
-            relative_path = filepath.replace("images/", "data/uploads/images/", 1)
+            relative_path = filepath.replace("images/", "data/uploads/", 1)
             
             if os.path.exists("/app/data/uploads"):
                 # Docker environment

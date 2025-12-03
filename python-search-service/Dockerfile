@@ -29,14 +29,15 @@ RUN python -c "import clip; clip.load('ViT-B/32', device='cpu', download_root='/
 # Stage 2: Runtime stage with minimal dependencies
 FROM python:3.11-slim
 
-# Install runtime dependencies only (libgomp1 for scikit-learn/numpy, curl for health checks)
+# Install runtime dependencies only (libgomp1 for scikit-learn/numpy, curl for health checks, gosu for privilege dropping)
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libgomp1 \
     curl \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
-# Create non-root user for security
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+# Create non-root user with specific UID/GID for consistency across services
+RUN groupadd -g 1000 appuser && useradd -u 1000 -g appuser -m -d /home/appuser appuser
 
 WORKDIR /app
 
@@ -52,12 +53,12 @@ COPY app.py embedding_service.py search_handler.py ./
 
 # Create directories for data volumes and ensure cache is accessible
 RUN mkdir -p /app/data/uploads /app/data/indexes /app/.cache/clip /app/.cache/torch /app/.cache/huggingface && \
-    chown -R appuser:appuser /app
+    chown -R appuser:appuser /app /home/appuser
 
 # Switch to non-root user
 USER appuser
 
-# Set HOME and model cache directories for non-root user
+# Set HOME and model cache directories
 ENV HOME=/app \
     TORCH_HOME=/app/.cache/torch \
     HF_HOME=/app/.cache/huggingface \
@@ -75,5 +76,5 @@ ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONIOENCODING=utf-8
 
-# Run the application
+# Run the application as non-root user
 CMD ["python", "app.py"]

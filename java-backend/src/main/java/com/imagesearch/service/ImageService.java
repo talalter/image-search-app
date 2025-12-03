@@ -159,9 +159,9 @@ public class ImageService {
         Path projectRoot = currentDir.getFileName().toString().equals("java-backend")
             ? currentDir.getParent()
             : currentDir;
-        Path imagesRoot = projectRoot.resolve("data").resolve("uploads").resolve("images");
+        Path imagesRoot = projectRoot.resolve("data").resolve("uploads");
 
-        // Create directory structure: {project-root}/data/uploads/images/{userId}/{folderId}/
+        // Create directory structure: {project-root}/data/uploads/{userId}/{folderId}/
         Path directoryPath = imagesRoot.resolve(userId.toString()).resolve(folderId.toString());
         Files.createDirectories(directoryPath);
 
@@ -185,7 +185,7 @@ public class ImageService {
 
         logger.info("Saved image file to: {}", filePath.toAbsolutePath());
 
-        // Return relative path for database storage
+        // Return relative path for database storage (matches URL mapping in StaticResourceConfig)
         return "images/" + userId + "/" + folderId + "/" + filename;
     }
 
