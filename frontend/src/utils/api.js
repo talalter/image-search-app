@@ -164,4 +164,18 @@ export async function deleteAccount(token) {
   });
 }
 
+/**
+ * Get embedding job status
+ * @param {number} jobId - Job ID
+ * @param {string} token - Session token
+ * @returns {Promise<{job_id: number, status: string, total_images: number, processed_images: number, progress_percentage: number}>}
+ * @throws {APIError}
+ */
+export async function getJobStatus(jobId, token) {
+  return apiRequest(`/api/images/job-status/${jobId}`, {
+    method: 'GET',
+    headers: { 'token': token }
+  });
+}
+
 // ============== User Authentication API ==============

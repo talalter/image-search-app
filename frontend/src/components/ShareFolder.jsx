@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getFolders as apiGetFolders, shareFolder } from '../utils/api';
+import Modal from './Modal';
+import sharedStyles from '../styles/shared.module.css';
 
 function ShareFolder({ onClose, inline = false }) {
   const [folders, setFolders] = useState([]);
@@ -78,49 +80,10 @@ function ShareFolder({ onClose, inline = false }) {
     }
   };
 
-  // If inline is true we render only the inner white card so this
-  // component can be embedded inside another modal/panel. Otherwise
-  // render as a full-screen overlay modal (existing behaviour).
-  const Inner = (
-    <div style={{
-      background: 'white',
-      borderRadius: '16px',
-      padding: '32px',
-      maxWidth: '500px',
-      width: '100%',
-      maxHeight: '80vh',
-      overflow: 'auto',
-      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)'
-    }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '24px'
-        }}>
-          <h2 style={{
-            margin: 0,
-            color: '#2c3e50',
-            fontSize: '24px'
-          }}>
-            📤 Share Folder
-          </h2>
-          <button
-            onClick={onClose}
-            style={{
-              background: 'none',
-              border: 'none',
-              fontSize: '24px',
-              cursor: 'pointer',
-              color: '#64748b',
-              padding: '0 8px'
-            }}
-          >
-            ×
-          </button>
-        </div>
-
-        {loadingFolders && (
+  // Render the main content
+  const content = (
+    <>
+      {loadingFolders && (
           <div style={{ textAlign: 'center', padding: '20px', color: '#64748b' }}>
             Loading your folders...
           </div>
@@ -136,13 +99,7 @@ function ShareFolder({ onClose, inline = false }) {
         {!loadingFolders && folders.length > 0 && (
           <form onSubmit={handleShare}>
             <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#475569',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
+              <label className={sharedStyles.formLabel}>
                 Select Folder
               </label>
               <select
@@ -170,13 +127,7 @@ function ShareFolder({ onClose, inline = false }) {
             </div>
 
             <div style={{ marginBottom: '20px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#475569',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
+              <label className={sharedStyles.formLabel}>
                 Username to Share With
               </label>
               <input
@@ -185,26 +136,12 @@ function ShareFolder({ onClose, inline = false }) {
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="Enter username"
                 required
-                style={{
-                  width: '100%',
-                  padding: '12px 16px',
-                  border: '2px solid #e1e8ed',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  transition: 'border-color 0.2s',
-                  boxSizing: 'border-box'
-                }}
+                className={sharedStyles.formInput}
               />
             </div>
 
             <div style={{ marginBottom: '24px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '8px',
-                color: '#475569',
-                fontSize: '14px',
-                fontWeight: '500'
-              }}>
+              <label className={sharedStyles.formLabel}>
                 Permission Level
               </label>
               <select
@@ -227,29 +164,13 @@ function ShareFolder({ onClose, inline = false }) {
             </div>
 
             {message && (
-              <div style={{
-                padding: '12px 16px',
-                backgroundColor: '#d4edda',
-                color: '#155724',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                fontSize: '14px',
-                borderLeft: '4px solid #28a745'
-              }}>
+              <div className={sharedStyles.successMessage}>
                 {message}
               </div>
             )}
 
             {error && (
-              <div style={{
-                padding: '12px 16px',
-                backgroundColor: '#fee',
-                color: '#c33',
-                borderRadius: '8px',
-                marginBottom: '20px',
-                fontSize: '14px',
-                borderLeft: '4px solid #e74c3c'
-              }}>
+              <div className={sharedStyles.errorMessage}>
                 {error}
               </div>
             )}
@@ -258,64 +179,35 @@ function ShareFolder({ onClose, inline = false }) {
               <button
                 type="submit"
                 disabled={loading}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  background: loading ? '#cbd5e1' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                  color: 'white',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: loading ? 'not-allowed' : 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
+                className={sharedStyles.primaryButton}
+                style={{ flex: 1 }}
               >
                 {loading ? 'Sharing...' : 'Share Folder'}
               </button>
               <button
                 type="button"
                 onClick={onClose}
-                style={{
-                  flex: 1,
-                  padding: '14px',
-                  background: '#e2e8f0',
-                  color: '#475569',
-                  border: 'none',
-                  borderRadius: '10px',
-                  fontSize: '16px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  transition: 'all 0.3s ease'
-                }}
+                className={sharedStyles.secondaryButton}
+                style={{ flex: 1 }}
               >
                 Cancel
               </button>
             </div>
           </form>
         )}
-      </div>
+    </>
   );
 
+  // Inline mode - render without modal wrapper
   if (inline) {
-    return Inner;
+    return <div style={{ padding: '0' }}>{content}</div>;
   }
 
+  // Modal mode - use shared Modal component
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      justifyContent: 'center',
-      alignItems: 'center',
-      zIndex: 1000
-    }}>
-      {Inner}
-    </div>
+    <Modal isOpen={true} onClose={onClose} title="📤 Share Folder">
+      {content}
+    </Modal>
   );
 }
 

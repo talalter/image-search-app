@@ -1,5 +1,6 @@
 import React from 'react';
 import { deleteAccount, clearToken } from '../utils/api';
+import styles from '../styles/components/DeleteAccount.module.css';
 
 function DeleteAccount({ onLogout }) {
   const handleDelete = async () => {
@@ -27,26 +28,7 @@ function DeleteAccount({ onLogout }) {
   return (
     <button
       onClick={handleDelete}
-      style={{
-        padding: '10px 18px',
-        background: 'linear-gradient(135deg, #ff416c 0%, #ff4b2b 100%)',
-        color: 'white',
-        border: 'none',
-        borderRadius: '8px',
-        fontSize: '13px',
-        fontWeight: '600',
-        cursor: 'pointer',
-        transition: 'all 0.3s ease',
-        boxShadow: '0 2px 8px rgba(255, 77, 77, 0.25)'
-      }}
-      onMouseOver={(e) => {
-        e.target.style.transform = 'translateY(-2px)';
-        e.target.style.boxShadow = '0 4px 12px rgba(255, 75, 75, 0.45)';
-      }}
-      onMouseOut={(e) => {
-        e.target.style.transform = 'translateY(0)';
-        e.target.style.boxShadow = '0 2px 8px rgba(255, 75, 75, 0.25)';
-      }}
+      className={styles.deleteButton}
     >
       Delete Account
     </button>

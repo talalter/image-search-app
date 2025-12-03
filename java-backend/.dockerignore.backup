@@ -1,0 +1,42 @@
+# Build output
+build/
+bin/
+.gradle/
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+.vscode/
+*.iml
+*.iws
+*.ipr
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+logs/
+*.log
+
+# Test files
+.pytest_cache/
+target/
+
+# Local data (should be mounted as volumes, not copied into image)
+images/
+data/
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+README.md
+
+# Environment files
+.env
+.env.local

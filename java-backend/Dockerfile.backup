@@ -1,0 +1,49 @@
+# Multi-stage Dockerfile for Java Spring Boot Backend
+# Stage 1: Build stage with Gradle
+FROM eclipse-temurin:17-jdk-alpine AS builder
+
+WORKDIR /app
+
+# Copy Gradle wrapper and build files first (for layer caching)
+COPY gradle/ gradle/
+COPY gradlew build.gradle settings.gradle ./
+
+# Download dependencies (this layer will be cached unless dependencies change)
+RUN ./gradlew dependencies --no-daemon || true
+
+# Copy source code
+COPY src/ src/
+
+# Build the application (skip tests for faster builds)
+RUN ./gradlew bootJar --no-daemon -x test
+
+# Stage 2: Runtime stage with JRE
+FROM eclipse-temurin:17-jre-alpine
+
+# Create non-root user for security
+RUN addgroup -S appuser && adduser -S appuser -G appuser
+
+WORKDIR /app
+
+# Copy JAR from build stage
+COPY --from=builder /app/build/libs/*.jar app.jar
+
+# Create directories for data volumes
+RUN mkdir -p /app/data/uploads /app/data/indexes && \
+    chown -R appuser:appuser /app
+
+# Switch to non-root user
+USER appuser
+
+# Expose port
+EXPOSE 8080
+
+# Health check using actuator endpoint
+HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/actuator/health || exit 1
+
+# JVM optimization for containerized environments
+ENV JAVA_OPTS="-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0 -XX:+UseParallelGC -Djava.security.egd=file:/dev/./urandom"
+
+# Run the application
+ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar app.jar"]

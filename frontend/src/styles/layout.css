@@ -1,38 +1,44 @@
 /* layout.css - app level layout and header */
 .app-container {
-  min-height: 100vh;
-  padding: 0px  350px 20px 8px;
+  height: 100vh;
+  overflow: hidden;
+  display: flex;
+  padding: 0;
 }
 
 .dashboard-layout {
-  max-width: 1200px;
-  margin: 0px auto;
-  display: grid;
-  grid-template-columns: 20% 80%;
-  gap: 100px;
+  display: flex;
+  width: 100%;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .dashboard-header {
-  align-self: start;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 280px;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  width: 100%;
-  
-  height: 100vh;          /* 🔥 Makes it fill the whole screen height */
-  
-  margin: 0;              /* 🔥 Remove space from top & bottom */
-  padding: 20px 24px;     /* Keep padding if you want internal spacing */
-  
-  background: rgb(230, 230, 237);
-  border-radius: 0;       /* Optional: remove radius if you want full-bleed */
-  
-  box-shadow: none;       /* Optional */
+  padding: 24px 20px;
+  background: linear-gradient(135deg, #e6e6ed 0%, #d1d5db 100%);
+  border-radius: 0;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.08);
+  overflow-y: auto;
+  z-index: 10;
 }
 
-/* Ensure the main content aligns to the top of the grid cell */
+/* Main content area - scrollable with sidebar offset */
 .main-content {
-  align-self: start;
+  margin-left: 280px;
+  width: calc(100% - 280px);
+  height: 100vh;
+  overflow-y: auto;
+  padding: 24px;
+  background: #f5f7fa;
+  box-sizing: border-box;
 }
 
 /* Header buttons container: stack buttons vertically */
@@ -108,12 +114,18 @@
 
 /* Responsive layout: stack on small screens */
 @media (max-width: 900px) {
-  .dashboard-layout {
-    grid-template-columns: 1fr;
+  .dashboard-header {
+    position: static;
+    width: 100%;
+    height: auto;
   }
 
-  .sidebar {
-    position: static;
-    min-height: auto;
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+
+  .dashboard-layout {
+    flex-direction: column;
   }
 }

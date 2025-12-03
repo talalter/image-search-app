@@ -20,7 +20,6 @@ import java.util.Map;
  * Catches all exceptions thrown by controllers and converts them to consistent
  * JSON error responses with appropriate HTTP status codes.
  *
- * This demonstrates enterprise-level error handling for interviews.
  */
 @RestControllerAdvice
 public class GlobalExceptionHandler {

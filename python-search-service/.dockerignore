@@ -7,15 +7,21 @@ __pycache__/
 venv/
 env/
 ENV/
+*.egg-info/
+dist/
+build/
 
-# FAISS indexes (built at runtime)
+# FAISS indexes (built at runtime, mounted as volume)
 faiss_indexes/
+data/
+indexes/
 
 # IDE files
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
 
 # OS files
 .DS_Store
@@ -28,7 +34,30 @@ Thumbs.db
 .pytest_cache/
 .coverage
 htmlcov/
+tests/
+test_*.py
+*_test.py
 
 # Git
 .git/
 .gitignore
+.gitattributes
+
+# Documentation
+*.md
+README.md
+docs/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Environment files
+.env
+.env.*

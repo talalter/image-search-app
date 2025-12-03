@@ -21,7 +21,7 @@ Semantic image search application using CLIP embeddings and FAISS vector similar
 React Frontend (3000)
     ↓
 Backend (choose one):
-├─→ Java Spring Boot (8080)    [Recommended for interviews/production]
+├─→ Java Spring Boot (8080)    [IM FOCUS HERE NOW]
 └─→ Python FastAPI (8000)      [Alternative implementation]
     ↓
 PostgreSQL Database (5432)

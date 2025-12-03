@@ -1,29 +1,79 @@
 # Build output
 build/
 bin/
+out/
 .gradle/
 *.jar
 *.war
 *.ear
+*.class
 
 # IDE files
 .idea/
 .vscode/
+.settings/
+.project
+.classpath
 *.iml
 *.iws
 *.ipr
+.factorypath
 
 # OS files
 .DS_Store
 Thumbs.db
+*.swp
+*.swo
+*~
 
 # Logs
 logs/
 *.log
 
-# Test files
+# Test files and reports
 .pytest_cache/
+target/
+test-results/
+coverage/
+.nyc_output/
+jacoco/
 
-# Local data
+# Local data (should be mounted as volumes, not copied into image)
 images/
 data/
+uploads/
+indexes/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+*.md
+README.md
+docs/
+
+# Docker files
+Dockerfile*
+docker-compose*.yml
+.dockerignore
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+.circleci/
+Jenkinsfile
+
+# Environment files
+.env
+.env.*
+application-local.yml
+application-dev.yml
+
+# Node modules (if any frontend tools)
+node_modules/
+
+# Gradle wrapper jar can be included, but cache should not
+!gradle-wrapper.jar

@@ -16,6 +16,8 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * Service for semantic image search.
@@ -125,17 +127,31 @@ public class SearchService {
 
         SearchServiceResponse searchResponse = searchClient.search(searchRequest);
 
-        // Step 3: Enrich results with database metadata
+        // Step 3: Enrich results with database metadata (BATCH LOOKUP - single query)
         List<SearchResponse.ImageSearchResult> results = new ArrayList<>();
 
-        for (SearchServiceResponse.SearchResult result : searchResponse.getResults()) {
-            Image image = imageService.getImageById(result.getImageId());
-            if (image != null) {
-                String imageUrl = getImageUrl(image.getFilepath());
-                results.add(new SearchResponse.ImageSearchResult(
-                    imageUrl,
-                    result.getScore()
-                ));
+        if (!searchResponse.getResults().isEmpty()) {
+            // Collect all image IDs from search results
+            Set<Long> imageIds = searchResponse.getResults().stream()
+                    .map(SearchServiceResponse.SearchResult::getImageId)
+                    .collect(Collectors.toSet());
+
+            // Single database query to fetch all images
+            Map<Long, Image> imagesById = imageService.getImagesByIds(imageIds);
+
+            // Build results in same order as search returned them
+            for (SearchServiceResponse.SearchResult result : searchResponse.getResults()) {
+                Image image = imagesById.get(result.getImageId());
+                if (image != null) {
+                    String imageUrl = getImageUrl(image.getFilepath());
+                    results.add(new SearchResponse.ImageSearchResult(
+                        imageUrl,
+                        result.getScore()
+                    ));
+                } else {
+                    logger.warn("Image {} not found in database (returned by FAISS but missing from DB)",
+                               result.getImageId());
+                }
             }
         }
 

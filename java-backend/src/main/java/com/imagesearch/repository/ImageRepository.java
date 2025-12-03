@@ -3,8 +3,11 @@ package com.imagesearch.repository;
 import com.imagesearch.model.entity.Image;
 import com.imagesearch.model.entity.Folder;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Repository interface for Image entity.
@@ -33,4 +36,14 @@ public interface ImageRepository extends JpaRepository<Image, Long> {
      * @return Number of images
      */
     long countByFolder(Folder folder);
+
+    /**
+     * Batch lookup images by IDs for search result enrichment.
+     * This performs a single database query instead of N queries.
+     *
+     * @param imageIds Set of image IDs to retrieve
+     * @return List of images (may be fewer than requested if some IDs don't exist)
+     */
+    @Query("SELECT i FROM Image i WHERE i.id IN :imageIds")
+    List<Image> findAllByIdIn(@Param("imageIds") Set<Long> imageIds);
 }

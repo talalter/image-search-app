@@ -8,7 +8,8 @@ import './styles/components/search.css';
 import Login from './components/Login.jsx';
 import authStyles from './styles/AppAuth.module.css';
 import Register from './components/Register.jsx';
-import SearchPanel from './components/SearchPanel.jsx';
+import SearchImages from './components/SearchImages.jsx';
+import GetFolders from './components/GetFolders.jsx';
 import UploadFolderPanel from './components/UploadFoldersPanel.jsx';
 import Modal from './components/Modal.jsx';
 import Card from './components/Card.jsx';
@@ -78,7 +79,7 @@ function App() {
   return (
     <div className="app-container">
       <div className="dashboard-layout">
-        {/* Header (left column) */}
+        {/* Sidebar - Fixed */}
         <div className="dashboard-header">
           <HeaderButtons
             username={user.username}
@@ -86,14 +87,19 @@ function App() {
           />
         </div>
 
-        {/* Main Content - Search Card (right column) */}
+        {/* Main Content - Scrollable */}
+        <div className="main-content">
           <Card title={"Search Images"}>
-            <SearchPanel
-              selectedFolderIds={selectedFoldersForSearch}
-              setSelectedFolderIds={setSelectedFoldersForSearch}
-              refreshTrigger={showManageModal}
-            />
+            <SearchImages selectedFolderIds={selectedFoldersForSearch} />
+            <div className="divider" style={{ margin: '24px 0' }}>
+              <GetFolders
+                selectedFolderIds={selectedFoldersForSearch}
+                setSelectedFolderIds={setSelectedFoldersForSearch}
+                refreshTrigger={showManageModal}
+              />
+            </div>
           </Card>
+        </div>
       </div>
 
       {/* Manage Folders Modal */}

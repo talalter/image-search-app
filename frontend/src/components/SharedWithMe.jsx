@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { getFoldersSharedWithMe } from '../utils/api';
+import Modal from './Modal';
+import sharedStyles from '../styles/shared.module.css';
 
 function SharedWithMe({ onClose, inline = false }) {
   const [sharedFolders, setSharedFolders] = useState([]);
@@ -21,40 +23,14 @@ function SharedWithMe({ onClose, inline = false }) {
     }
   };
 
-  const Inner = (
-    <div style={{
-      background: 'white',
-      borderRadius: '16px',
-      padding: '24px',
-      maxWidth: '600px',
-      width: '100%',
-      maxHeight: '80vh',
-      overflow: 'auto',
-      boxShadow: '0 20px 60px rgba(0, 0, 0, 0.1)'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '16px'
-      }}>
-        <h2 style={{ margin: 0, color: '#2c3e50', fontSize: '20px' }}>📥 Shared With Me</h2>
-        {!inline && (
-          <button
-            onClick={onClose}
-            style={{ background: 'none', border: 'none', fontSize: '20px', cursor: 'pointer', color: '#64748b', padding: '0 8px' }}
-          >
-            ×
-          </button>
-        )}
-      </div>
-
+  const content = (
+    <>
       {loading && (
         <div style={{ textAlign: 'center', padding: '12px', color: '#64748b' }}>Loading...</div>
       )}
 
       {error && (
-        <div style={{ padding: '12px 16px', backgroundColor: '#fee', color: '#c33', borderRadius: '8px', marginBottom: '12px', fontSize: '14px', borderLeft: '4px solid #e74c3c' }}>{error}</div>
+        <div className={sharedStyles.errorMessage}>{error}</div>
       )}
 
       {!loading && !error && sharedFolders.length === 0 && (
@@ -78,19 +54,19 @@ function SharedWithMe({ onClose, inline = false }) {
           ))}
         </div>
       )}
-
-      {inline ? null : (
-        <button onClick={onClose} style={{ width: '100%', padding: '12px', background: '#e2e8f0', color: '#475569', border: 'none', borderRadius: '10px', fontSize: '16px', fontWeight: '600', cursor: 'pointer', marginTop: '12px' }}>Close</button>
-      )}
-    </div>
+    </>
   );
 
-  if (inline) return Inner;
+  // Inline mode - render without modal wrapper
+  if (inline) {
+    return <div style={{ padding: '0' }}>{content}</div>;
+  }
 
+  // Modal mode - use shared Modal component
   return (
-    <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center', zIndex: 1000 }}>
-      {Inner}
-    </div>
+    <Modal isOpen={true} onClose={onClose} title="📥 Shared With Me">
+      {content}
+    </Modal>
   );
 }
 

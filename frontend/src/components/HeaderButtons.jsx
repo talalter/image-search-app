@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import LogOut from './Logout.jsx';
+import Logout from './Logout.jsx';
 import DeleteAccount from './DeleteAccount';
 
 function HeaderButtons({ 
@@ -21,7 +21,7 @@ function HeaderButtons({
       </button>
       {showLogout && (
         <div className="logout-popup">
-          <LogOut onLogout={onLogout} />
+          <Logout onLogout={onLogout} />
           <p> </p>
           <DeleteAccount onLogout={onLogout} />
         </div>

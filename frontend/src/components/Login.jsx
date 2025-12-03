@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { loginUser, saveToken, APIError, HTTP_STATUS } from '../utils/api';
 import UniMageLogo from './UniMageLogo';
+import sharedStyles from '../styles/shared.module.css';
 
 /**
  * Login Component
@@ -106,13 +107,7 @@ function Login({ onLogin }) {
 
       <form onSubmit={handleSubmit} autoComplete="off">
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            color: '#475569',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
+          <label className={sharedStyles.formLabel}>
             Username
           </label>
           <input
@@ -121,28 +116,12 @@ function Login({ onLogin }) {
             onChange={e => setUsername(e.target.value)}
             placeholder="Enter your username"
             required
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #e1e8ed',
-              borderRadius: '10px',
-              fontSize: '16px',
-              transition: 'border-color 0.2s',
-              boxSizing: 'border-box'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-            onBlur={(e) => e.target.style.borderColor = '#e1e8ed'}
+            className={sharedStyles.formInput}
           />
         </div>
 
         <div style={{ marginBottom: '24px' }}>
-          <label style={{ 
-            display: 'block', 
-            marginBottom: '8px', 
-            color: '#475569',
-            fontSize: '14px',
-            fontWeight: '500'
-          }}>
+          <label className={sharedStyles.formLabel}>
             Password
           </label>
           <input
@@ -151,30 +130,12 @@ function Login({ onLogin }) {
             onChange={e => setPassword(e.target.value)}
             placeholder="Enter your password"
             required
-            style={{
-              width: '100%',
-              padding: '12px 16px',
-              border: '2px solid #e1e8ed',
-              borderRadius: '10px',
-              fontSize: '16px',
-              transition: 'border-color 0.2s',
-              boxSizing: 'border-box'
-            }}
-            onFocus={(e) => e.target.style.borderColor = '#667eea'}
-            onBlur={(e) => e.target.style.borderColor = '#e1e8ed'}
+            className={sharedStyles.formInput}
           />
         </div>
 
         {error && (
-          <div style={{
-            padding: '12px 16px',
-            backgroundColor: '#fee',
-            color: '#c33',
-            borderRadius: '8px',
-            marginBottom: '20px',
-            fontSize: '14px',
-            borderLeft: '4px solid #e74c3c'
-          }}>
+          <div className={sharedStyles.errorMessage}>
             {error}
           </div>
         )}
@@ -182,29 +143,8 @@ function Login({ onLogin }) {
         <button 
           type="submit" 
           disabled={loading}
-          style={{
-            width: '100%',
-            padding: '14px',
-            background: loading ? '#cbd5e1' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-            color: 'white',
-            border: 'none',
-            borderRadius: '10px',
-            fontSize: '16px',
-            fontWeight: '600',
-            cursor: loading ? 'not-allowed' : 'pointer',
-            transition: 'all 0.3s ease',
-            boxShadow: loading ? 'none' : '0 4px 12px rgba(102, 126, 234, 0.4)'
-          }}
-          onMouseOver={(e) => {
-            if (!loading) {
-              e.target.style.transform = 'translateY(-2px)';
-              e.target.style.boxShadow = '0 6px 16px rgba(102, 126, 234, 0.6)';
-            }
-          }}
-          onMouseOut={(e) => {
-            e.target.style.transform = 'translateY(0)';
-            e.target.style.boxShadow = '0 4px 12px rgba(102, 126, 234, 0.4)';
-          }}
+          className={sharedStyles.primaryButton}
+          style={{ width: '100%' }}
         >
           {loading ? 'Signing in...' : 'Sign In'}
         </button>

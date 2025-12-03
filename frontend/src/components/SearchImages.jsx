@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { searchImages as apiSearchImages } from '../utils/api';
 
 
-function SearchImage({ selectedFolderIds }) {
+function SearchImages({ selectedFolderIds }) {
   console.log('Selected folder IDs from SearchImages:', selectedFolderIds);
   const [query, setQuery] = useState('');
   const [topK, setTopK] = useState(1);
@@ -83,4 +83,4 @@ function SearchImage({ selectedFolderIds }) {
   );
 }
 
-export default SearchImage;
+export default SearchImages;

@@ -31,11 +31,18 @@ FAISS_FOLDER = get_faiss_base_folder()
 class SearchHandler:
     """Manages FAISS indexes for image search."""
 
-    def __init__(self, embedding_service: EmbeddingService = None, base_folder: str = FAISS_FOLDER):
+    def __init__(self, embedding_service: EmbeddingService = None, base_folder: str = FAISS_FOLDER, cache_size: int = 50):
         self.base_folder = base_folder
         os.makedirs(self.base_folder, exist_ok=True)
         self.embedding_service = embedding_service if embedding_service is not None else EmbeddingService()
-        logger.info(f"SearchHandler initialized with base folder: {base_folder}")
+
+        # LRU cache for FAISS indexes: {(user_id, folder_id): index}
+        # Reduces disk I/O by keeping recently used indexes in memory
+        self._index_cache = {}
+        self._cache_access_order = []  # Track access order for LRU eviction
+        self._cache_size = cache_size
+
+        logger.info(f"SearchHandler initialized with base folder: {base_folder}, cache_size: {cache_size}")
 
     def _get_folder_path(self, user_id: int, folder_id: int) -> str:
         """Get path to FAISS index file for a folder."""
@@ -46,6 +53,58 @@ class SearchHandler:
         norms = np.linalg.norm(vectors, axis=1, keepdims=True)
         norms[norms == 0] = 1e-10
         return vectors / norms
+
+    def _load_index(self, user_id: int, folder_id: int):
+        """
+        Load FAISS index with LRU caching.
+
+        This significantly improves search performance by avoiding repeated disk I/O
+        for frequently accessed indexes.
+
+        Args:
+            user_id: User ID
+            folder_id: Folder ID
+
+        Returns:
+            FAISS index object
+        """
+        cache_key = (user_id, folder_id)
+
+        # Check cache
+        if cache_key in self._index_cache:
+            # Move to end (most recently used)
+            self._cache_access_order.remove(cache_key)
+            self._cache_access_order.append(cache_key)
+            logger.debug(f"Cache HIT for index {cache_key}")
+            return self._index_cache[cache_key]
+
+        # Cache miss - load from disk
+        index_path = self._get_folder_path(user_id, folder_id)
+        if not os.path.exists(index_path):
+            raise FileNotFoundError(f"FAISS index not found at {index_path}")
+
+        index = faiss.read_index(index_path)
+        logger.debug(f"Cache MISS for index {cache_key} - loaded from disk")
+
+        # Add to cache
+        self._index_cache[cache_key] = index
+        self._cache_access_order.append(cache_key)
+
+        # Evict oldest if cache is full
+        if len(self._index_cache) > self._cache_size:
+            oldest_key = self._cache_access_order.pop(0)
+            del self._index_cache[oldest_key]
+            logger.debug(f"Evicted index {oldest_key} from cache")
+
+        return index
+
+    def _invalidate_cache(self, user_id: int, folder_id: int):
+        """Remove index from cache (called when index is modified or deleted)."""
+        cache_key = (user_id, folder_id)
+        if cache_key in self._index_cache:
+            del self._index_cache[cache_key]
+            self._cache_access_order.remove(cache_key)
+            logger.debug(f"Invalidated cache for index {cache_key}")
 
     def create_faiss_index(self, user_id: int, folder_id: int, dimension: int = 512):
         """
@@ -89,6 +148,10 @@ class SearchHandler:
 
         # Save updated index
         faiss.write_index(index, index_path)
+
+        # Invalidate cache since index was modified
+        self._invalidate_cache(user_id, folder_id)
+
         logger.debug(f"Added vector {vector_id} to index {index_path}")
 
     def add_vectors_batch(self, user_id: int, folder_id: int, vectors: list, vector_ids: list):
@@ -126,6 +189,10 @@ class SearchHandler:
 
         # Save updated index (single write operation)
         faiss.write_index(index, index_path)
+
+        # Invalidate cache since index was modified
+        self._invalidate_cache(user_id, folder_id)
+
         logger.info(f"Batch added {len(vectors)} vectors to index {index_path}")
 
     def search_with_ownership(
@@ -176,8 +243,13 @@ class SearchHandler:
                 logger.warning(f"FAISS index not found at {index_path}, skipping folder {folder_id}")
                 continue
 
-            # Load index and search
-            index = faiss.read_index(index_path)
+            # Load index from cache (or disk if not cached)
+            try:
+                index = self._load_index(owner_user_id, folder_id)
+            except FileNotFoundError:
+                logger.warning(f"FAISS index not found for folder {folder_id}, skipping")
+                continue
+
             local_k = min(k, index.ntotal)
             if local_k == 0:
                 continue
@@ -208,6 +280,9 @@ class SearchHandler:
             user_id: User ID
             folder_id: Folder ID
         """
+        # Invalidate cache first
+        self._invalidate_cache(user_id, folder_id)
+
         index_path = self._get_folder_path(user_id, folder_id)
         if os.path.exists(index_path):
             os.remove(index_path)
