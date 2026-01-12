@@ -1,7 +1,5 @@
 package com.imagesearch.controller;
 
-import com.imagesearch.exception.ForbiddenException;
-import com.imagesearch.exception.ResourceNotFoundException;
 import com.imagesearch.model.dto.response.SearchResponse;
 import com.imagesearch.model.dto.response.UploadResponse;
 import com.imagesearch.service.ImageService;

@@ -128,6 +128,8 @@ class SearchHandler:
         """
         Add an image embedding to the FAISS index.
 
+        Auto-creates index if it doesn't exist (handles case where createIndex failed due to service downtime).
+
         Args:
             user_id: User ID
             folder_id: Folder ID
@@ -135,8 +137,11 @@ class SearchHandler:
             vector_id: Image ID (from database)
         """
         index_path = self._get_folder_path(user_id, folder_id)
+
+        # Auto-create index if it doesn't exist
         if not os.path.exists(index_path):
-            raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
+            logger.warning(f"Index for folder {folder_id} (user {user_id}) doesn't exist - auto-creating now")
+            self.create_faiss_index(user_id, folder_id)
 
         # Load existing index
         index = faiss.read_index(index_path)
@@ -159,6 +164,8 @@ class SearchHandler:
         Add multiple image embeddings to the FAISS index in a single batch operation.
         This is more efficient and avoids concurrency issues compared to multiple individual adds.
 
+        Auto-creates index if it doesn't exist (handles case where createIndex failed due to service downtime).
+
         Args:
             user_id: User ID
             folder_id: Folder ID
@@ -173,8 +180,12 @@ class SearchHandler:
             return
 
         index_path = self._get_folder_path(user_id, folder_id)
+
+        # Auto-create index if it doesn't exist
+        # This handles the case where folder was created while search service was down
         if not os.path.exists(index_path):
-            raise FileNotFoundError(f"FAISS index for folder {folder_id} (user {user_id}) does not exist.")
+            logger.warning(f"Index for folder {folder_id} (user {user_id}) doesn't exist - auto-creating now")
+            self.create_faiss_index(user_id, folder_id)
 
         # Load existing index
         index = faiss.read_index(index_path)

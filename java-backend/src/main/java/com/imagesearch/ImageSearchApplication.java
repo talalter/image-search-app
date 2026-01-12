@@ -16,7 +16,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  * - RESTful API for React frontend
  *
  * Architecture:
- * React Frontend → Java Backend (this) → Java Search Microservice
+ * React Frontend → Java Backend (this) → Python Search Microservice
  *
  * @author Tal Alter
  */

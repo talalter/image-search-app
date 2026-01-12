@@ -1,6 +1,6 @@
 # 🔍 Semantic Image Search Platform
 
-Enterprise-grade image search application using AI-powered semantic search. Built with microservices architecture, featuring **Java Spring Boot backend**, **Python AI search service** (CLIP + FAISS), **React frontend**, and **PostgreSQL database**.
+Enterprise-grade image search application using AI-powered semantic search. Built with microservices architecture, featuring **three interchangeable backends** (Python FastAPI, Java Spring Boot, .NET Core), **Python AI search service** (CLIP + FAISS), **React frontend**, and **PostgreSQL database**.
 
 [![Java](https://img.shields.io/badge/Java-17-orange.svg)](https://www.java.com/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.2-green.svg)](https://spring.io/projects/spring-boot)
@@ -29,7 +29,10 @@ Upload your images and search them using **natural language** - no tags or keywo
 ```
 React Frontend (Port 3000)
         ↓
-Java Spring Boot Backend (Port 8080)
+Backend (choose one):
+├─→ Python FastAPI (Port 8000)      [PRIMARY]
+├─→ Java Spring Boot (Port 8080)    [Alternative]
+└─→ .NET Core (Port 7000)           [Alternative]
         ↓
 PostgreSQL Database (Port 5432)
         ↓
@@ -39,23 +42,23 @@ Python Search Service (Port 5000)
 ```
 
 **Service Responsibilities:**
-- **Java Backend**: REST API, business logic, authentication, file management
+- **Backends (Python/Java/.NET)**: REST API, business logic, authentication, file management
 - **Python Search Service**: AI/ML operations (CLIP embeddings, FAISS vector search)
 - **PostgreSQL**: User data, folder metadata, image references, sessions
 - **React Frontend**: User interface, API client, state management
 
-> **Note:** A Python FastAPI backend and Java search service (with ONNX and Elasticsearch) implementations are also available as an alternative (see `python-backend/`, `java-search-service/`). Both backends share the same database and search service.
+> **Note:** Three backend implementations are available - Python FastAPI (primary), Java Spring Boot, and .NET Core. All three share the same database schema, REST API contract, and Python search service. The frontend can switch between them via the `REACT_APP_BACKEND` environment variable.
 
 ### Technology Stack
 
-**Java Spring Boot Backend (Port 8080)**
-- RESTful API with layered architecture (Controller → Service → Repository → Entity)
-- Spring Data JPA + Hibernate ORM for database operations
-- WebClient for non-blocking microservice communication
+**Python FastAPI Backend (Port 8000) - PRIMARY**
+- FastAPI framework with async endpoints
+- PostgreSQL with psycopg2 for database operations
 - BCrypt password hashing with session-based authentication
-- Transaction management with `@Transactional`
-- Global exception handling with `@ControllerAdvice`
-- Comprehensive test suite (JUnit 5 + Mockito)
+- Modular architecture (routes → database → models)
+- Global exception handling with custom error handlers
+- Comprehensive test suite (pytest + httpx)
+- Optional AWS S3 integration for file storage
 
 **Python Search Service (Port 5000)**
 - FastAPI framework with async endpoints
@@ -63,6 +66,14 @@ Python Search Service (Port 5000)
 - FAISS IndexFlatIP for cosine similarity search
 - Batch processing to prevent race conditions during concurrent uploads
 - Index management (create, search, delete per folder)
+
+**Java Spring Boot Backend (Port 8080) - ALTERNATIVE**
+- RESTful API with layered architecture (Controller → Service → Repository → Entity)
+- Spring Data JPA + Hibernate ORM for database operations
+- WebClient for non-blocking microservice communication
+- Transaction management with `@Transactional`
+- Global exception handling with `@ControllerAdvice`
+- Comprehensive test suite (JUnit 5 + Mockito)
 
 **React Frontend (Port 3000)**
 - React 18 with modern hooks (useState, useEffect)
@@ -116,16 +127,20 @@ python app.py  # Runs on http://localhost:5000
 
 **Note:** First run downloads the CLIP model (~1-2 second startup delay).
 
-#### 3. Start Java Spring Boot Backend
+#### 3. Start Python FastAPI Backend
 
 ```bash
-cd java-backend
+# Option A: Use convenience script (recommended)
+./scripts/run-python.sh
+
+# Option B: Manual setup
+cd python-backend
+python3 -m venv venv
+source venv/bin/activate  # Windows: venv\Scripts\activate
+pip install -r requirements.txt
 export DB_USERNAME=imageuser
 export DB_PASSWORD=imagepass123
-./gradlew bootRun  # Runs on http://localhost:8080
-
-# OR use the convenience script:
-./scripts/run-java.sh
+uvicorn api:app --reload --port 8000  # Runs on http://localhost:8000
 ```
 
 #### 4. Start React Frontend
@@ -136,25 +151,24 @@ npm install
 npm start  # Runs on http://localhost:3000
 ```
 
-The frontend defaults to the Java backend at `http://localhost:8080`.
+The frontend defaults to the Python backend at `http://localhost:8000`.
+
+**To use Java backend instead:** Set `REACT_APP_BACKEND=java` and start the Java backend (see `java-backend/` directory).
 
 ### Docker Deployment
 
 **Recommended for production-like environments:**
 
 ```bash
-# Build and start all services (Java backend + Python search + PostgreSQL + React)
+# Build and start all services (Python backend + Python search + PostgreSQL + React)
 docker-compose up --build
-
-# OR use the existing docker-compose-simple.yml
-docker-compose -f docker-compose-simple.yml up --build
 
 # Run in detached mode
 docker-compose up -d
 
 # View logs
 docker-compose logs -f
-docker-compose logs -f java-backend  # Specific service
+docker-compose logs -f python-backend  # Specific service
 
 # Stop all services
 docker-compose down
@@ -165,16 +179,18 @@ docker-compose down -v
 
 **Services will be available at:**
 - Frontend: http://localhost:3000
-- Java Backend: http://localhost:8080
+- Python Backend: http://localhost:8000
 - Python Search Service: http://localhost:5000
 - PostgreSQL: localhost:5432
+
+**For Java backend stack:** Use `docker-compose -f docker-compose.java.yml up --build`
 
 See [DOCKER.md](DOCKER.md) for detailed Docker deployment instructions.
 
 ## How to Use
 
 1. **Register**: Create an account at http://localhost:3000
-2. **Create Folder**: Click "Manage Folders" → "Create Folder"
+2. **Create Folder**: Click "Manage Folders" → "Update Folder"
 3. **Upload Images**: Select folder, drag & drop images (JPG/PNG)
 4. **Search**: Enter queries like:
    - "sunset over ocean"
@@ -328,10 +344,11 @@ cd java-backend
 **Automated Testing (Recommended):**
 ```bash
 # Full workflow test (register → login → upload → search → share → delete)
-./scripts/test-api.sh java
+./scripts/test-api.sh python  # For Python backend
+./scripts/test-api.sh java    # For Java backend
 
 # Or manually with curl
-curl -X POST http://localhost:8080/api/users/register \
+curl -X POST http://localhost:8000/api/users/register \
   -H "Content-Type: application/json" \
   -d '{"username": "testuser", "password": "testpass123"}'
 ```
@@ -347,7 +364,7 @@ curl -X POST http://localhost:8080/api/users/register \
 ### Quick Start with Docker
 
 ```bash
-# Start all services (Java + Python Search + PostgreSQL + React)
+# Start all services (Python + Python Search + PostgreSQL + React)
 docker-compose up --build
 
 # Run in detached mode
@@ -355,7 +372,7 @@ docker-compose up -d
 
 # View logs
 docker-compose logs -f
-docker-compose logs -f java-backend  # Specific service
+docker-compose logs -f python-backend  # Specific service
 
 # Stop all services
 docker-compose down
@@ -368,7 +385,7 @@ docker-compose up --build
 ### Docker Architecture
 
 **Services:**
-- `java-backend`: Spring Boot app (port 8080)
+- `python-backend`: FastAPI app (port 8000)
 - `python-search-service`: CLIP + FAISS service (port 5000)
 - `postgres`: PostgreSQL database (port 5432)
 - `frontend`: React app served by Nginx (port 3000)
@@ -379,18 +396,18 @@ docker-compose up --build
 
 **Networks:**
 - All services on `app-network` bridge network
-- Inter-service communication via service names (e.g., `http://java-backend:8080`)
+- Inter-service communication via service names (e.g., `http://python-backend:8000`)
 
 ### Docker Images
 
 ```bash
 # Build individual services
-docker build -t image-search-java-backend ./java-backend
+docker build -t image-search-python-backend ./python-backend
 docker build -t image-search-python-service ./python-search-service
 docker build -t image-search-frontend ./frontend
 
 # Multi-platform builds (optional)
-docker buildx build --platform linux/amd64,linux/arm64 -t image-search-java-backend ./java-backend
+docker buildx build --platform linux/amd64,linux/arm64 -t image-search-python-backend ./python-backend
 ```
 
 See [DOCKER.md](DOCKER.md) for detailed deployment instructions, troubleshooting, and production considerations.

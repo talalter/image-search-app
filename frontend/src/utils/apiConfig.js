@@ -13,22 +13,22 @@
  * Backend Configuration
  *
  * Set REACT_APP_BACKEND environment variable to choose backend:
- * - 'java' → Java Spring Boot backend (port 8080) - DEFAULT
- * - 'python' → Python FastAPI backend (port 8000)
+ * - 'python' → Python FastAPI backend (port 8000) - DEFAULT
+ * - 'java' → Java Spring Boot backend (port 8080)
  *
  * Both backends use the same RESTful endpoints (e.g., /api/users/login)
  *
  * To switch backends:
- * export REACT_APP_BACKEND=python && npm start
+ * export REACT_APP_BACKEND=java && npm start
  * or
- * REACT_APP_BACKEND=python npm start
+ * REACT_APP_BACKEND=java npm start
  */
-const BACKEND = process.env.REACT_APP_BACKEND || 'java';
+const BACKEND = process.env.REACT_APP_BACKEND || 'python';
 
 // Backend configuration - uses absolute URLs for both Java and Python backends
 // Switch backends using environment variable:
-//   REACT_APP_BACKEND=java npm start   (default - port 8080)
-//   REACT_APP_BACKEND=python npm start (port 8000)
+//   REACT_APP_BACKEND=python npm start (default - port 8000)
+//   REACT_APP_BACKEND=java npm start   (port 8080)
 const API_BASE_URL = BACKEND === 'python'
   ? 'http://localhost:8000'   // Python FastAPI backend
   : 'http://localhost:8080';  // Java Spring Boot backend
@@ -43,6 +43,7 @@ export const API_ENDPOINTS = {
   DELETE_ACCOUNT: `${API_BASE_URL}/api/users/delete`,
   UPLOAD_IMAGES: `${API_BASE_URL}/api/images/upload`,
   SEARCH_IMAGES: `${API_BASE_URL}/api/images/search`,
+  SEARCH_HISTORY: `${API_BASE_URL}/api/search/history`,
   GET_FOLDERS: `${API_BASE_URL}/api/folders`,
   DELETE_FOLDERS: `${API_BASE_URL}/api/folders`,
   FOLDERS_SHARED_WITH_ME: `${API_BASE_URL}/api/folders/shared`,

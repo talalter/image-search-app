@@ -3,6 +3,8 @@ package com.imagesearch.client;
 import com.imagesearch.client.dto.EmbedImagesRequest;
 import com.imagesearch.client.dto.SearchServiceRequest;
 import com.imagesearch.client.dto.SearchServiceResponse;
+import com.imagesearch.exception.SearchServiceUnavailableException;
+import com.imagesearch.service.FailedRequestService;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,7 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 
 import java.time.Duration;
-import java.util.Collections;
 
 /**
  * Python search service implementation using FAISS for vector search.
@@ -45,14 +46,17 @@ public class PythonSearchClientImpl implements SearchClient {
 
     private final WebClient webClient;
     private final int timeoutSeconds;
+    private final FailedRequestService failedRequestService;
 
     @SuppressWarnings("null")
     public PythonSearchClientImpl(
             WebClient.Builder webClientBuilder,
             @Value("${search-service.base-url}") String baseUrl,
-            @Value("${search-service.timeout-seconds}") int timeoutSeconds) {
+            @Value("${search-service.timeout-seconds}") int timeoutSeconds,
+            FailedRequestService failedRequestService) {
         this.webClient = webClientBuilder.baseUrl(baseUrl).build();
         this.timeoutSeconds = timeoutSeconds;
+        this.failedRequestService = failedRequestService;
         logger.info("PythonSearchClientImpl initialized with base URL: {} (FAISS backend)", baseUrl);
     }
 
@@ -91,32 +95,36 @@ public class PythonSearchClientImpl implements SearchClient {
     /**
      * Fallback method for search() when circuit is OPEN.
      *
+     * Persists the failed search request to database for retry and throws
+     * SearchServiceUnavailableException with HTTP 503 status.
+     *
      * This is called when:
      * - Circuit breaker is OPEN (too many failures)
      * - Python service is down or slow
      * - Prevents waiting for timeout (fail fast)
      *
      * Interview talking point:
-     * "When the search service is down, instead of making users wait 30 seconds,
-     * we fail immediately and return an empty result set. This prevents thread
-     * pool exhaustion and provides better UX (fast error > slow error)."
-     *
-     * Future improvement: Return cached search results instead of empty list
+     * "When the search service is down, we queue the search request for retry,
+     * inform the user with a meaningful error (503), and prevent thread pool
+     * exhaustion. The scheduled retry job will process queued searches when
+     * the service recovers."
      *
      * @param request Original search request
      * @param exception The exception that triggered the fallback
-     * @return Empty search response
+     * @throws SearchServiceUnavailableException Always thrown to inform user
      */
     public SearchServiceResponse searchFallback(SearchServiceRequest request, Exception exception) {
-        logger.warn("Python search service unavailable (circuit OPEN), returning empty results. " +
+        logger.warn("Python search service unavailable (circuit OPEN). " +
                    "Query: '{}', Folders: {}, Error: {}",
                    request.getQuery(), request.getFolderIds(), exception.getMessage());
 
-        // Return empty results instead of throwing exception
-        // This allows the user to see that search is unavailable without crashing the app
-        SearchServiceResponse emptyResponse = new SearchServiceResponse();
-        emptyResponse.setResults(Collections.emptyList());
-        return emptyResponse;
+        // Throw exception that will be caught by GlobalExceptionHandler (HTTP 503)
+        // Note: We don't retry searches - user can try again later
+        throw new SearchServiceUnavailableException(
+            request.getQuery(),
+            0, // No retry queue for searches
+            exception
+        );
     }
 
     /**
@@ -153,17 +161,27 @@ public class PythonSearchClientImpl implements SearchClient {
     /**
      * Fallback for embedImages() when circuit is OPEN.
      *
-     * Since embedding is async and non-critical for upload success,
-     * we just log a warning. Images can be re-indexed later via batch job.
+     * Persists the failed request to database for retry via scheduled job.
+     * This ensures images eventually get indexed even if search service is temporarily down.
      *
      * @param request Original embed request
      * @param exception The exception that triggered fallback
      */
     public void embedImagesFallback(EmbedImagesRequest request, Exception exception) {
-        logger.warn("Python search service unavailable (circuit OPEN), skipping embedding for {} images in folder {}. " +
+        logger.warn("Python search service unavailable (circuit OPEN), queuing {} images from folder {} for retry. " +
                    "Images uploaded successfully but not searchable yet. Error: {}",
                    request.getImages().size(), request.getFolderId(), exception.getMessage());
-        // TODO: Add images to retry queue for later indexing
+
+        // Persist to retry queue - scheduled job will retry later
+        failedRequestService.recordFailedEmbed(
+            request.getUserId(),
+            request.getFolderId(),
+            request.getImages(),
+            exception.getMessage()
+        );
+
+        logger.info("Failed embedding request queued for retry (folder: {}, {} images)",
+                   request.getFolderId(), request.getImages().size());
     }
 
     /**

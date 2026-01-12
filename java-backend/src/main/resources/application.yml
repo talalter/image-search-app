@@ -40,6 +40,12 @@ search:
 search-service:
   base-url: ${SEARCH_SERVICE_URL:http://localhost:5000}
   timeout-seconds: 120
+  retry:
+    max-attempts: 5  # Maximum retry attempts before marking as permanently failed
+    cleanup-after-days: 7  # Delete successful/failed requests after this many days
+    embed-cron: "0 */10 * * * *"  # Every 10 minutes - retry failed embeddings
+    search-cron: "0 */5 * * * *"  # Every 5 minutes - retry failed searches
+    cleanup-cron: "0 0 2 * * *"  # Daily at 2 AM - cleanup old requests
 
 # Java Search Service Configuration
 java-search-service:
@@ -55,6 +61,10 @@ storage:
 # Session Configuration
 session:
   token-expiry-hours: 12
+
+# Search History Configuration
+search-history:
+  max-entries: ${SEARCH_HISTORY_MAX_ENTRIES:50}
 
 logging:
   level:

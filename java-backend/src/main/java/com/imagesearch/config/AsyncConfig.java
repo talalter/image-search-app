@@ -34,4 +34,13 @@ public class AsyncConfig {
         executor.initialize();
         return executor;
     }
+    
+    /**
+     * Dedicated executor for image embedding tasks.
+     * Alias for taskExecutor to support @Async("embeddingExecutor").
+     */
+    @Bean(name = "embeddingExecutor")
+    public Executor embeddingExecutor() {
+        return taskExecutor();
+    }
 }

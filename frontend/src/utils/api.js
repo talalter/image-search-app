@@ -178,4 +178,40 @@ export async function getJobStatus(jobId, token) {
   });
 }
 
+// ============== Search History API ==============
+
+/**
+ * Get user's search history
+ * @returns {Promise<{queries: string[]}>}
+ */
+export async function getSearchHistory() {
+  const token = getToken();
+  const params = new URLSearchParams({ token });
+  return apiRequest(`${API_ENDPOINTS.SEARCH_HISTORY}?${params.toString()}`, {
+    method: 'GET'
+  });
+}
+
+/**
+ * Add query to search history
+ * @param {string} query - Search query to add
+ * @returns {Promise<{message: string, queries: string[]}>}
+ */
+export async function addSearchHistory(query) {
+  const token = getToken();
+  return post(API_ENDPOINTS.SEARCH_HISTORY, { token, query });
+}
+
+/**
+ * Clear all search history
+ * @returns {Promise<{message: string}>}
+ */
+export async function clearSearchHistory() {
+  const token = getToken();
+  const params = new URLSearchParams({ token });
+  return apiRequest(`${API_ENDPOINTS.SEARCH_HISTORY}?${params.toString()}`, {
+    method: 'DELETE'
+  });
+}
+
 // ============== User Authentication API ==============

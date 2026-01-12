@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Semantic image search application using CLIP embeddings and FAISS vector similarity. Features **two interchangeable backend implementations** (Java Spring Boot and Python FastAPI) that share the same PostgreSQL database and delegate AI operations to a dedicated Python search microservice.
 
 **Core Technology Stack:**
-- **Backends:** Java Spring Boot 3.2 (port 8080) OR Python FastAPI (port 8000) - choose one
+- **Backends:** Python FastAPI (port 8000) - PRIMARY | Java Spring Boot 3.2 (port 8080) - Alternative
 - **Search Service:** Python FastAPI with CLIP + FAISS (port 5000) - shared by both backends
 - **Frontend:** React 18 (port 3000)
 - **Database:** PostgreSQL 15+ (port 5432)
@@ -21,8 +21,8 @@ Semantic image search application using CLIP embeddings and FAISS vector similar
 React Frontend (3000)
     ↓
 Backend (choose one):
-├─→ Java Spring Boot (8080)    [IM FOCUS HERE NOW]
-└─→ Python FastAPI (8000)      [Alternative implementation]
+├─→ Python FastAPI (8000)      [PRIMARY BACKEND]
+└─→ Java Spring Boot (8080)    [Alternative implementation]
     ↓
 PostgreSQL Database (5432)
     ↓
@@ -55,7 +55,30 @@ data/
 
 ### Running the Application
 
-**Option 1: Java Backend Stack**
+**Option 1: Python Backend Stack (Primary)**
+```bash
+# Terminal 1: Python search service
+cd python-search-service
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+python app.py
+
+# Terminal 2: Python backend
+./scripts/run-python.sh
+# OR manually:
+cd python-backend
+python3 -m venv venv && source venv/bin/activate
+pip install -r requirements.txt
+export DB_USERNAME=imageuser DB_PASSWORD=imagepass123
+uvicorn api:app --reload --port 8000
+
+# Terminal 3: React frontend (points to Python backend by default)
+cd frontend
+npm start
+# OR explicitly: REACT_APP_BACKEND=python npm start
+```
+
+**Option 2: Java Backend Stack (Alternative)**
 ```bash
 # Terminal 1: Python search service
 cd python-search-service
@@ -72,28 +95,7 @@ export DB_USERNAME=imageuser DB_PASSWORD=imagepass123
 
 # Terminal 3: React frontend (points to Java backend)
 cd frontend
-npm start
-# OR explicitly: REACT_APP_BACKEND=java npm start
-```
-
-**Option 2: Python Backend Stack (Quick Development)**
-```bash
-# Terminal 1: Python backend (with search service integration)
-cd python-backend
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-export DB_USERNAME=imageuser DB_PASSWORD=imagepass123
-uvicorn api:app --reload --port 8000
-
-# Terminal 2: Python search service
-cd python-search-service
-python3 -m venv venv && source venv/bin/activate
-pip install -r requirements.txt
-python app.py
-
-# Terminal 3: React frontend (points to Python backend)
-cd frontend
-REACT_APP_BACKEND=python npm start
+REACT_APP_BACKEND=java npm start
 ```
 
 ### Database Setup (One-time)

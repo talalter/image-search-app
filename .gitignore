@@ -1,6 +1,7 @@
 # Python
 __pycache__/
 .claude/
+.gitub
 *.pyc
 *.pyo
 *.pyd

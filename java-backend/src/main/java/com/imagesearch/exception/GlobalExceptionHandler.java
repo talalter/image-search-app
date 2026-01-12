@@ -100,6 +100,21 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handle search service unavailable (503).
+     */
+    @ExceptionHandler(SearchServiceUnavailableException.class)
+    public ResponseEntity<ErrorResponse> handleSearchServiceUnavailable(
+            SearchServiceUnavailableException ex, WebRequest request) {
+        ErrorResponse error = new ErrorResponse(
+            ex.getMessage(),
+            HttpStatus.SERVICE_UNAVAILABLE.value(),
+            LocalDateTime.now(),
+            request.getDescription(false).replace("uri=", "")
+        );
+        return new ResponseEntity<>(error, HttpStatus.SERVICE_UNAVAILABLE);
+    }
+
+    /**
      * Handle validation errors from @Valid annotations (422).
      */
     @ExceptionHandler(MethodArgumentNotValidException.class)

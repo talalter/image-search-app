@@ -50,18 +50,21 @@ public class FolderService {
     private final ImageRepository imageRepository;
     private final UserRepository userRepository;
     private final SearchClient searchClient;
+    private final FailedRequestService failedRequestService;
 
     public FolderService(
             FolderRepository folderRepository,
             FolderShareRepository folderShareRepository,
             ImageRepository imageRepository,
             UserRepository userRepository,
-            SearchClient searchClient) {
+            SearchClient searchClient,
+            FailedRequestService failedRequestService) {
         this.folderRepository = folderRepository;
         this.folderShareRepository = folderShareRepository;
         this.imageRepository = imageRepository;
         this.userRepository = userRepository;
         this.searchClient = searchClient;
+        this.failedRequestService = failedRequestService;
     }
 
     /**
@@ -182,7 +185,15 @@ public class FolderService {
             deletePhysicalFolder(userId, folderId);
 
             // 3. Delete search index (delegates to active backend)
-            searchClient.deleteIndex(userId, folderId);
+            // If fails, add to retry queue for automatic cleanup when service recovers
+            try {
+                searchClient.deleteIndex(userId, folderId);
+                logger.info("Deleted index for folder: id={}", folderId);
+            } catch (Exception e) {
+                logger.warn("Failed to delete index for folder {} - adding to retry queue: {}",
+                           folderId, e.getMessage());
+                failedRequestService.recordFailedIndexDeletion(userId, folderId, e.getMessage());
+            }
 
             logger.info("Deleted folder: id={}", folderId);
         }
